@@ -190,34 +190,37 @@ function Consultation() {
             {sections.map((s) => {
               const isActive = s.key === active;
               return (
-                <button
+                <Button
                   key={s.key}
                   id={`tab-${s.key}`}
+                   data-section={s.key}
                   role="tab"
                   aria-selected={isActive}
                   aria-controls="section-panel"
                   tabIndex={isActive ? 0 : -1}
                   onClick={() => go(s.key)}
                   className={cn(
-                    "relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-3 text-sm transition-colors sm:px-4",
-                    isActive ? "font-semibold text-primary" : "text-muted-foreground hover:text-foreground",
+                     "consultation-theme relative h-12 shrink-0 gap-1.5 rounded-none border-0 px-3 text-sm shadow-none transition-colors focus-visible:z-10 sm:px-4",
+                     isActive ? "bg-section-soft font-bold text-section-ink hover:bg-section-soft hover:text-section-ink" : "bg-transparent font-medium text-muted-foreground hover:bg-section-soft hover:text-section-ink",
                   )}
+                   variant="ghost"
                 >
+                   <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full bg-section-accent", isActive ? "opacity-100" : "opacity-45")} />
                   {s.label}
-                  {s.key === "medicines" && medicines.length > 0 && <span className="rounded-full bg-primary px-1.5 text-[11px] font-semibold leading-5 text-primary-foreground">{medicines.length}</span>}
-                  {s.key !== "medicines" && filled[s.key] && <span className="size-1.5 rounded-full bg-success" aria-label="has entries" />}
+                   {s.key === "medicines" && medicines.length > 0 && <span className="rounded-full bg-section-accent px-1.5 text-[11px] font-semibold leading-5 text-primary-foreground">{medicines.length}</span>}
+                   {s.key !== "medicines" && filled[s.key] && <span className="size-1.5 rounded-full bg-section-accent" aria-label="has entries" />}
                   {s.key === "medicines" && <span className="sr-only"> (primary)</span>}
-                  <span className={cn("absolute inset-x-2 bottom-0 h-0.5 rounded-full", isActive ? "bg-primary" : "bg-transparent")} />
-                </button>
+                   <span aria-hidden="true" className={cn("absolute inset-x-0 bottom-0 h-0.5", isActive ? "bg-section-accent" : "bg-transparent")} />
+                 </Button>
               );
             })}
           </div>
         </nav>
 
-        <div id="section-panel" role="tabpanel" aria-labelledby={`tab-${active}`} className="pt-6">
+         <div id="section-panel" role="tabpanel" aria-labelledby={`tab-${active}`} data-section={active} className="consultation-theme mt-4 rounded-md border border-section-border bg-section-surface p-4 sm:p-6">
           {active !== "medicines" && (
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-sm">
-              <span className="text-secondary-foreground">Optional — skip anytime.</span>
+             <div className="mb-5 flex flex-wrap items-center justify-between gap-2 border-b border-section-border pb-3 text-sm">
+               <span className="text-muted-foreground">Optional — skip anytime.</span>
               <Button size="sm" variant="ghost" className="h-8 text-primary" onClick={() => go("medicines")}>Go to Medicines <ChevronRight size={15} /></Button>
             </div>
           )}
@@ -234,7 +237,7 @@ function Consultation() {
 
           {active === "medicines" && <section aria-labelledby="prescription-title">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-              <h2 id="prescription-title" className="text-2xl font-bold">Medicines</h2>
+               <h2 id="prescription-title" className="border-l-4 border-section-accent pl-3 text-2xl font-bold text-section-ink">Medicines</h2>
               <span className="text-sm text-muted-foreground">{medicines.length} {medicines.length === 1 ? "medicine" : "medicines"}</span>
             </div>
              <div className={cn("mb-4 rounded-md border px-3 py-3 sm:px-4", allergyStatus === "known" ? "border-allergy-alert-border bg-allergy-alert text-allergy-alert-foreground" : allergyStatus === "none" ? "border-allergy-clear-border bg-allergy-clear text-allergy-clear-foreground" : "border-allergy-unknown-border bg-allergy-unknown text-allergy-unknown-foreground")} aria-label="Patient drug allergy status">
@@ -255,19 +258,19 @@ function Consultation() {
                </div>}
              </div>
             <div className="relative z-10" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSearchOpen(false); }}>
-              <div className="flex items-center gap-2 rounded-md border border-primary bg-card p-1.5 shadow-sm focus-within:ring-2 focus-within:ring-ring/25">
-                <Search className="ml-2 shrink-0 text-primary" size={20} aria-hidden="true" />
+               <div className="flex items-center gap-2 rounded-md border border-section-accent bg-card p-1.5 shadow-sm focus-within:ring-2 focus-within:ring-section-accent/25">
+                 <Search className="ml-2 shrink-0 text-section-ink" size={20} aria-hidden="true" />
                 <Input ref={searchRef} value={query} onChange={(event) => { setQuery(event.target.value); setSearchOpen(true); }} onFocus={() => setSearchOpen(true)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addMedicine(match[0] ?? query); } if (event.key === "Escape") setSearchOpen(false); }} className="h-10 border-0 px-1 shadow-none focus-visible:ring-0" placeholder="Search medicine or type a name…" aria-label="Search medicine" autoComplete="off" />
                 <Button onClick={() => addMedicine(match[0] ?? query)} className="shrink-0" disabled={!query.trim()} aria-label="Add medicine"><Plus size={17} /><span className="hidden sm:inline">Add medicine</span></Button>
               </div>
               {searchOpen && query.trim() && <div className="absolute top-full left-0 right-0 z-20 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-lg" role="listbox" aria-label="Medicine suggestions">
                 {match.map((item) => <Button key={item} variant="ghost" className="h-auto w-full justify-start rounded-none px-4 py-3 text-left font-normal" onMouseDown={(event) => event.preventDefault()} onClick={() => addMedicine(item)} role="option" aria-selected="false"><Search size={14} className="text-muted-foreground" />{item}</Button>)}
-                {!exactMatch && <Button variant="ghost" className="h-auto w-full justify-start rounded-none border-t border-border px-4 py-3 text-left font-medium text-primary" onMouseDown={(event) => event.preventDefault()} onClick={() => addMedicine(query)} role="option" aria-selected="false"><Plus size={15} /> Add “{query.trim()}” manually</Button>}
+                 {!exactMatch && <Button variant="ghost" className="h-auto w-full justify-start rounded-none border-t border-border px-4 py-3 text-left font-medium text-section-ink" onMouseDown={(event) => event.preventDefault()} onClick={() => addMedicine(query)} role="option" aria-selected="false"><Plus size={15} /> Add “{query.trim()}” manually</Button>}
               </div>}
             </div>
-            {medicines.length === 0 ? <div className="mt-5 flex min-h-44 flex-col items-center justify-center rounded-md border border-dashed border-border bg-card px-4 py-8 text-center"><span className="mb-3 flex size-10 items-center justify-center rounded-md bg-secondary text-primary"><Plus size={21} /></span><h3 className="font-semibold">Start prescription</h3><p className="mt-1 max-w-xs text-sm text-muted-foreground">Search for a medicine above or enter one manually.</p></div> : <div className="mt-5 space-y-3">
+             {medicines.length === 0 ? <div className="mt-5 flex min-h-44 flex-col items-center justify-center rounded-md border border-dashed border-section-border bg-card px-4 py-8 text-center"><span className="mb-3 flex size-10 items-center justify-center rounded-md bg-section-soft text-section-ink"><Plus size={21} /></span><h3 className="font-semibold">Start prescription</h3><p className="mt-1 max-w-xs text-sm text-muted-foreground">Search for a medicine above or enter one manually.</p></div> : <div className="mt-5 space-y-3">
               {medicines.map((medicine, i) => <div key={medicine.id} className="rounded-md border border-border bg-card p-4 sm:p-5">
-                <div className="mb-4 flex items-start justify-between gap-3"><div className="flex min-w-0 flex-1 items-start gap-3"><span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-bold text-primary">{String(i + 1).padStart(2, "0")}</span><div className="min-w-0 flex-1">{editingMedicineId === medicine.id ? <Input autoFocus aria-label="Medicine name" value={medicine.name} onChange={(event) => updateMedicine(medicine.id, "name", event.target.value)} onBlur={() => setEditingMedicineId(null)} onKeyDown={(event) => { if (event.key === "Enter") setEditingMedicineId(null); }} /> : <h3 className="break-words font-semibold leading-7">{medicine.name}</h3>}</div></div><div className="flex shrink-0 items-center"><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={`Edit ${medicine.name} name`} title="Edit medicine name" onMouseDown={(event) => event.preventDefault()} onClick={() => setEditingMedicineId(medicine.id)}><Pencil size={16} /></Button><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" aria-label={`Remove ${medicine.name}`} title="Remove medicine" onClick={() => setMedicines((items) => items.filter((item) => item.id !== medicine.id))}><Trash2 size={16} /></Button></div></div>
+                 <div className="mb-4 flex items-start justify-between gap-3"><div className="flex min-w-0 flex-1 items-start gap-3"><span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-section-soft text-xs font-bold text-section-ink">{String(i + 1).padStart(2, "0")}</span><div className="min-w-0 flex-1">{editingMedicineId === medicine.id ? <Input autoFocus aria-label="Medicine name" value={medicine.name} onChange={(event) => updateMedicine(medicine.id, "name", event.target.value)} onBlur={() => setEditingMedicineId(null)} onKeyDown={(event) => { if (event.key === "Enter") setEditingMedicineId(null); }} /> : <h3 className="break-words font-semibold leading-7">{medicine.name}</h3>}</div></div><div className="flex shrink-0 items-center"><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={`Edit ${medicine.name} name`} title="Edit medicine name" onMouseDown={(event) => event.preventDefault()} onClick={() => setEditingMedicineId(medicine.id)}><Pencil size={16} /></Button><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" aria-label={`Remove ${medicine.name}`} title="Remove medicine" onClick={() => setMedicines((items) => items.filter((item) => item.id !== medicine.id))}><Trash2 size={16} /></Button></div></div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <label className="block min-w-0 text-xs font-semibold text-muted-foreground">Dose<Input id={`dose-${medicine.id}`} value={medicine.dose} onChange={(event) => updateMedicine(medicine.id, "dose", event.target.value)} placeholder="e.g. 1 tablet" className="mt-1.5 h-10 text-foreground" /></label>
                   <div className="min-w-0 text-xs font-semibold text-muted-foreground"><label htmlFor={`frequency-${medicine.id}`}>Frequency</label><Select value={medicine.frequency} onValueChange={(value) => updateMedicine(medicine.id, "frequency", value)}><SelectTrigger id={`frequency-${medicine.id}`} className="mt-1.5 h-10 font-normal text-foreground"><SelectValue /></SelectTrigger><SelectContent>{frequencyOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
@@ -279,13 +282,13 @@ function Consultation() {
           </section>}
 
           {active === "followup" && <SectionBlock title="Follow-up" hint="When should the patient return?">
-            <div className="flex flex-wrap gap-2">{followupPresets.map((p) => <Button key={p} size="sm" variant={followup === p ? "default" : "outline"} onClick={() => setFollowup(followup === p ? "" : p)}>After {p}</Button>)}</div>
+             <div className="flex flex-wrap gap-2">{followupPresets.map((p) => <Button key={p} size="sm" variant="outline" className={followup === p ? "border-section-accent bg-section-soft font-semibold text-section-ink hover:bg-section-soft hover:text-section-ink" : ""} aria-pressed={followup === p} onClick={() => setFollowup(followup === p ? "" : p)}>After {p}</Button>)}</div>
             <Input className="mt-3" value={followupNote} onChange={(e) => setFollowupNote(e.target.value)} placeholder="Advice or note (optional)" />
           </SectionBlock>}
 
-          <div className="mt-8 flex items-center justify-between gap-3 border-t border-border pt-4">
-            <Button variant="ghost" disabled={index === 0} onClick={() => go(sections[index - 1]!.key)}><ChevronLeft size={16} /> {index > 0 ? sections[index - 1]!.label : "Previous"}</Button>
-            {index < sections.length - 1 && <Button variant="outline" onClick={() => go(sections[index + 1]!.key)}>Next: {sections[index + 1]!.label} <ChevronRight size={16} /></Button>}
+           <div className="mt-8 flex items-center justify-between gap-2 border-t border-section-border pt-4">
+             <Button variant="ghost" className="h-auto min-h-9 min-w-0 justify-start whitespace-normal text-left" disabled={index === 0} onClick={() => go(sections[index - 1]!.key)}><ChevronLeft size={16} /> {index > 0 ? sections[index - 1]!.label : "Previous"}</Button>
+             {index < sections.length - 1 && <Button variant="outline" className="h-auto min-h-9 min-w-0 justify-end whitespace-normal text-right" onClick={() => go(sections[index + 1]!.key)}>Next: {sections[index + 1]!.label} <ChevronRight size={16} /></Button>}
           </div>
         </div>
       </main>
@@ -309,7 +312,7 @@ function Consultation() {
 function SectionBlock({ title, hint, children }: { title: string; hint: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 className="text-xl font-bold">{title}</h2>
+       <h2 className="border-l-4 border-section-accent pl-3 text-xl font-bold text-section-ink">{title}</h2>
       <p className="mb-4 mt-1 text-sm text-muted-foreground">{hint}</p>
       {children}
     </section>

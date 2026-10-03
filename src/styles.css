@@ -38,6 +38,11 @@
   --color-allergy-clear: var(--allergy-clear);
   --color-allergy-clear-foreground: var(--allergy-clear-foreground);
   --color-allergy-clear-border: var(--allergy-clear-border);
+  --color-section-accent: var(--section-accent);
+  --color-section-ink: var(--section-ink);
+  --color-section-surface: var(--section-surface);
+  --color-section-border: var(--section-border);
+  --color-section-soft: var(--section-soft);
 }
 :root {
   --radius: 0.5rem;
@@ -71,6 +76,48 @@
   --allergy-clear: oklch(0.96 0.03 160);
   --allergy-clear-foreground: oklch(0.35 0.09 160);
   --allergy-clear-border: oklch(0.77 0.09 160);
+}
+.consultation-theme[data-section="complaints"] {
+  --section-accent: oklch(0.58 0.16 48);
+  --section-ink: oklch(0.43 0.12 48);
+  --section-surface: oklch(0.985 0.012 55);
+  --section-border: oklch(0.88 0.045 55);
+  --section-soft: oklch(0.95 0.034 55);
+}
+.consultation-theme[data-section="vitals"] {
+  --section-accent: oklch(0.56 0.14 246);
+  --section-ink: oklch(0.4 0.105 246);
+  --section-surface: oklch(0.982 0.012 245);
+  --section-border: oklch(0.88 0.042 245);
+  --section-soft: oklch(0.946 0.035 245);
+}
+.consultation-theme[data-section="examination"] {
+  --section-accent: oklch(0.58 0.14 305);
+  --section-ink: oklch(0.43 0.11 305);
+  --section-surface: oklch(0.983 0.012 305);
+  --section-border: oklch(0.89 0.041 305);
+  --section-soft: oklch(0.95 0.031 305);
+}
+.consultation-theme[data-section="investigations"] {
+  --section-accent: oklch(0.62 0.13 82);
+  --section-ink: oklch(0.4 0.095 82);
+  --section-surface: oklch(0.985 0.017 88);
+  --section-border: oklch(0.88 0.055 86);
+  --section-soft: oklch(0.95 0.052 88);
+}
+.consultation-theme[data-section="medicines"] {
+  --section-accent: var(--primary);
+  --section-ink: oklch(0.38 0.098 160);
+  --section-surface: oklch(0.982 0.013 165);
+  --section-border: oklch(0.88 0.043 165);
+  --section-soft: oklch(0.943 0.034 165);
+}
+.consultation-theme[data-section="followup"] {
+  --section-accent: oklch(0.55 0.105 191);
+  --section-ink: oklch(0.38 0.081 191);
+  --section-surface: oklch(0.982 0.012 191);
+  --section-border: oklch(0.88 0.042 191);
+  --section-soft: oklch(0.946 0.032 191);
 }
 @layer base {
   * { border-color: var(--color-border); }
