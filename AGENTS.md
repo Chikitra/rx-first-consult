@@ -11,3 +11,4 @@
 
 - Keep the consultation as the index route and its prescription preview client-side until patient and prescribing services are connected; the current project has no backend.
 - Keep clinical context optional and secondary to medicines; the consultation must never gate prescription generation on documentation.
+- Keep allergy status as three explicit client-side states in the medicines workspace until patient services are connected; unrecorded must never be inferred as no known allergies.
