@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Activity, ArrowLeft, Check, ChevronDown, ClipboardList, Clock3, FileText, History, Plus, Printer, Search, Stethoscope, Trash2, X } from "lucide-react";
+import { Activity, ArrowLeft, ChevronDown, ClipboardList, Clock3, FileText, History, Pencil, Plus, Printer, Search, Stethoscope, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,6 +40,7 @@ function Consultation() {
   const [context, setContext] = useState<Record<ContextKey, string>>({ complaint: "", finding: "", diagnosis: "", note: "" });
   const [previewOpen, setPreviewOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [editingMedicineId, setEditingMedicineId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(1);
@@ -128,7 +129,7 @@ function Consultation() {
               </div>
               {medicines.length === 0 ? <div className="mt-5 flex min-h-44 flex-col items-center justify-center rounded-md border border-dashed border-border bg-card px-4 py-8 text-center"><span className="mb-3 flex size-10 items-center justify-center rounded-md bg-secondary text-primary"><Plus size={21} /></span><h3 className="font-semibold">Start prescription</h3><p className="mt-1 max-w-xs text-sm text-muted-foreground">Search for a medicine above or enter one manually.</p></div> : <div className="mt-5 space-y-3">
                 {medicines.map((medicine, index) => <div key={medicine.id} className="rounded-md border border-border bg-card p-4 sm:p-5">
-                  <div className="mb-4 flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-bold text-primary">{String(index + 1).padStart(2, "0")}</span><div className="min-w-0"><h3 className="break-words font-semibold leading-7">{medicine.name}</h3><p className="text-xs text-muted-foreground">Medicine</p></div></div><Button variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive" aria-label={`Remove ${medicine.name}`} title="Remove medicine" onClick={() => setMedicines((items) => items.filter((item) => item.id !== medicine.id))}><Trash2 size={16} /></Button></div>
+                  <div className="mb-4 flex items-start justify-between gap-3"><div className="flex min-w-0 flex-1 items-start gap-3"><span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-bold text-primary">{String(index + 1).padStart(2, "0")}</span><div className="min-w-0 flex-1">{editingMedicineId === medicine.id ? <Input autoFocus aria-label="Medicine name" value={medicine.name} onChange={(event) => updateMedicine(medicine.id, "name", event.target.value)} onBlur={() => setEditingMedicineId(null)} onKeyDown={(event) => { if (event.key === "Enter") setEditingMedicineId(null); }} /> : <h3 className="break-words font-semibold leading-7">{medicine.name}</h3>}<p className="text-xs text-muted-foreground">Medicine</p></div></div><div className="flex shrink-0 items-center"><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={`Edit ${medicine.name} name`} title="Edit medicine name" onMouseDown={(event) => event.preventDefault()} onClick={() => setEditingMedicineId(medicine.id)}><Pencil size={16} /></Button><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" aria-label={`Remove ${medicine.name}`} title="Remove medicine" onClick={() => setMedicines((items) => items.filter((item) => item.id !== medicine.id))}><Trash2 size={16} /></Button></div></div>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     <label className="block min-w-0 text-xs font-semibold text-muted-foreground">Dose<Input id={`dose-${medicine.id}`} value={medicine.dose} onChange={(event) => updateMedicine(medicine.id, "dose", event.target.value)} placeholder="e.g. 1 tablet" className="mt-1.5 h-10 text-foreground" /></label>
                     <div className="min-w-0 text-xs font-semibold text-muted-foreground"><label htmlFor={`frequency-${medicine.id}`}>Frequency</label><Select value={medicine.frequency} onValueChange={(value) => updateMedicine(medicine.id, "frequency", value)}><SelectTrigger id={`frequency-${medicine.id}`} className="mt-1.5 h-10 font-normal text-foreground"><SelectValue /></SelectTrigger><SelectContent>{frequencyOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
