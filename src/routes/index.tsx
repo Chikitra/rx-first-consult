@@ -127,7 +127,7 @@ function Consultation() {
   function onTabKey(event: React.KeyboardEvent) {
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
     event.preventDefault();
-    const next = sections[(index + (event.key === "ArrowRight" ? 1 : -1) + sections.length) % sections.length].key;
+    const next = sections[(index + (event.key === "ArrowRight" ? 1 : -1) + sections.length) % sections.length]!.key;
     go(next);
     document.getElementById(`tab-${next}`)?.focus();
   }
@@ -244,8 +244,8 @@ function Consultation() {
           </SectionBlock>}
 
           <div className="mt-8 flex items-center justify-between gap-3 border-t border-border pt-4">
-            <Button variant="ghost" disabled={index === 0} onClick={() => go(sections[index - 1].key)}><ChevronLeft size={16} /> {index > 0 ? sections[index - 1].label : "Previous"}</Button>
-            {index < sections.length - 1 && <Button variant="outline" onClick={() => go(sections[index + 1].key)}>Next: {sections[index + 1].label} <ChevronRight size={16} /></Button>}
+            <Button variant="ghost" disabled={index === 0} onClick={() => go(sections[index - 1]!.key)}><ChevronLeft size={16} /> {index > 0 ? sections[index - 1]!.label : "Previous"}</Button>
+            {index < sections.length - 1 && <Button variant="outline" onClick={() => go(sections[index + 1]!.key)}>Next: {sections[index + 1]!.label} <ChevronRight size={16} /></Button>}
           </div>
         </div>
       </main>
