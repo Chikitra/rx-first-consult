@@ -286,9 +286,9 @@ function Consultation() {
             <Input className="mt-3" value={followupNote} onChange={(e) => setFollowupNote(e.target.value)} placeholder="Advice or note (optional)" />
           </SectionBlock>}
 
-           <div className="mt-8 flex items-center justify-between gap-3 border-t border-section-border pt-4">
-            <Button variant="ghost" disabled={index === 0} onClick={() => go(sections[index - 1]!.key)}><ChevronLeft size={16} /> {index > 0 ? sections[index - 1]!.label : "Previous"}</Button>
-            {index < sections.length - 1 && <Button variant="outline" onClick={() => go(sections[index + 1]!.key)}>Next: {sections[index + 1]!.label} <ChevronRight size={16} /></Button>}
+           <div className="mt-8 flex items-center justify-between gap-2 border-t border-section-border pt-4">
+             <Button variant="ghost" className="h-auto min-h-9 min-w-0 justify-start whitespace-normal text-left" disabled={index === 0} onClick={() => go(sections[index - 1]!.key)}><ChevronLeft size={16} /> {index > 0 ? sections[index - 1]!.label : "Previous"}</Button>
+             {index < sections.length - 1 && <Button variant="outline" className="h-auto min-h-9 min-w-0 justify-end whitespace-normal text-right" onClick={() => go(sections[index + 1]!.key)}>Next: {sections[index + 1]!.label} <ChevronRight size={16} /></Button>}
           </div>
         </div>
       </main>
