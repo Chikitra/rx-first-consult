@@ -77,13 +77,13 @@ function LastPrescription({ currentNames, onRepeat }: { currentNames: string[]; 
   const count = selected.filter(Boolean).length;
   const allSelected = count === rx.medicines.length;
   function pick(i: number) {
-    setIndex(i); setSelected(pastPrescriptions[i].medicines.map(() => true)); setShowAll(false); setNotice("");
+    setIndex(i); setSelected(pastPrescriptions[i]!.medicines.map(() => true)); setShowAll(false); setNotice("");
   }
   function repeat() {
-    const items = rx.medicines.filter((_, i) => selected[i]);
+    const items = rx!.medicines.filter((_, i) => selected[i]);
     onRepeat(items);
     setNotice(`${items.length} ${items.length === 1 ? "medicine" : "medicines"} added to current prescription — review before generating.`);
-    setSelected(rx.medicines.map(() => false));
+    setSelected(rx!.medicines.map(() => false));
   }
   return (
     <div className="mb-5 rounded-md border border-border bg-muted/40 p-3 sm:p-4" aria-label="Last prescription">
