@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Activity, ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, FileText, History, Pencil, Plus, Printer, Search, Trash2, X } from "lucide-react";
+import { Activity, AlertTriangle, ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, FileText, History, Pencil, Plus, Printer, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +22,7 @@ export const Route = createFileRoute("/")({
 });
 
 type Medicine = { id: number; name: string; dose: string; frequency: string; duration: string; instructions: string };
+type AllergyStatus = "unknown" | "none" | "known";
 type SectionKey = "complaints" | "vitals" | "examination" | "investigations" | "medicines" | "followup";
 type VitalKey = "bp" | "pulse" | "temp" | "spo2" | "weight";
 
@@ -65,6 +66,10 @@ function Consultation() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [editingMedicineId, setEditingMedicineId] = useState<number | null>(null);
+  const [allergyStatus, setAllergyStatus] = useState<AllergyStatus>("unknown");
+  const [allergies, setAllergies] = useState<string[]>([]);
+  const [allergyEditorOpen, setAllergyEditorOpen] = useState(false);
+  const [allergyInput, setAllergyInput] = useState("");
   const [error, setError] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(1);
@@ -106,6 +111,24 @@ function Consultation() {
   function updateMedicine(id: number, field: keyof Medicine, value: string) {
     setMedicines((items) => items.map((item) => item.id === id ? { ...item, [field]: value } : item));
     setError("");
+  }
+  function addAllergy() {
+    const name = allergyInput.trim();
+    if (!name || allergies.some((allergy) => allergy.toLowerCase() === name.toLowerCase())) return;
+    setAllergies((items) => [...items, name]);
+    setAllergyStatus("known");
+    setAllergyInput("");
+  }
+  function removeAllergy(indexToRemove: number) {
+    const remaining = allergies.filter((_, index) => index !== indexToRemove);
+    setAllergies(remaining);
+    if (!remaining.length) setAllergyStatus("unknown");
+  }
+  function setAllergyState(status: "none" | "unknown") {
+    setAllergyStatus(status);
+    setAllergies([]);
+    setAllergyInput("");
+    setAllergyEditorOpen(false);
   }
   function generate() {
     if (!medicines.length) {
@@ -214,6 +237,23 @@ function Consultation() {
               <h2 id="prescription-title" className="text-2xl font-bold">Medicines</h2>
               <span className="text-sm text-muted-foreground">{medicines.length} {medicines.length === 1 ? "medicine" : "medicines"}</span>
             </div>
+             <div className={cn("mb-4 rounded-md border px-3 py-3 sm:px-4", allergyStatus === "known" ? "border-allergy-alert-border bg-allergy-alert text-allergy-alert-foreground" : allergyStatus === "none" ? "border-allergy-clear-border bg-allergy-clear text-allergy-clear-foreground" : "border-allergy-unknown-border bg-allergy-unknown text-allergy-unknown-foreground")} aria-label="Patient drug allergy status">
+               <div className="flex items-start justify-between gap-2">
+                 <div className="flex min-w-0 items-start gap-2.5">
+                   {allergyStatus === "none" ? <Check size={19} className="mt-0.5 shrink-0" aria-hidden="true" /> : <AlertTriangle size={19} className="mt-0.5 shrink-0" aria-hidden="true" />}
+                   <div className="min-w-0">
+                     <p className="font-semibold">{allergyStatus === "known" ? "Drug Allergies" : allergyStatus === "none" ? "No known drug allergies" : "Allergy status not recorded"}</p>
+                     {allergyStatus === "known" && <p className="mt-1 break-words text-sm">{allergies.join(" · ")}</p>}
+                   </div>
+                 </div>
+                 <Button size="sm" variant="ghost" className="shrink-0 text-inherit hover:bg-background/60 hover:text-inherit" aria-expanded={allergyEditorOpen} aria-controls="allergy-editor" onClick={() => setAllergyEditorOpen((open) => !open)}>{allergyStatus === "unknown" ? <><Plus size={15} /> Add allergy</> : "Edit"}</Button>
+               </div>
+               {allergyEditorOpen && <div id="allergy-editor" className="mt-3 border-t border-current/20 pt-3">
+                 {allergies.length > 0 && <div className="mb-3 space-y-2">{allergies.map((allergy, index) => <div key={index} className="flex items-center gap-2"><Input aria-label={`Allergy ${index + 1}`} value={allergy} onChange={(event) => { const value = event.target.value; setAllergies((items) => items.map((item, i) => i === index ? value : item)); }} onBlur={() => { if (!allergies[index]?.trim()) removeAllergy(index); }} className="h-9 bg-card text-foreground" /><Button size="icon" variant="ghost" className="shrink-0 text-inherit" aria-label={`Remove ${allergy}`} title="Remove allergy" onClick={() => removeAllergy(index)}><Trash2 size={16} /></Button></div>)}</div>}
+                 <div className="flex gap-2"><Input aria-label="New drug allergy" placeholder="Drug or substance name" value={allergyInput} onChange={(event) => setAllergyInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addAllergy(); } }} className="h-9 min-w-0 bg-card text-foreground" /><Button size="sm" variant="outline" className="shrink-0" onClick={addAllergy} disabled={!allergyInput.trim()}><Plus size={15} /> Add</Button></div>
+                 <div className="mt-3 flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" onClick={() => setAllergyState("none")}><Check size={15} /> No known drug allergies</Button>{allergyStatus !== "unknown" && <Button size="sm" variant="ghost" className="text-inherit hover:text-inherit" onClick={() => setAllergyState("unknown")}>Mark not recorded</Button>}</div>
+               </div>}
+             </div>
             <div className="relative z-10" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSearchOpen(false); }}>
               <div className="flex items-center gap-2 rounded-md border border-primary bg-card p-1.5 shadow-sm focus-within:ring-2 focus-within:ring-ring/25">
                 <Search className="ml-2 shrink-0 text-primary" size={20} aria-hidden="true" />
