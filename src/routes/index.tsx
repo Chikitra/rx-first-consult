@@ -56,11 +56,12 @@ function Consultation() {
   function addMedicine(name: string) {
     const trimmed = name.trim();
     if (!trimmed) { searchRef.current?.focus(); return; }
-    setMedicines((items) => [...items, { id: nextId.current++, name: trimmed, dose: "", frequency: "Twice daily", duration: "", instructions: "" }]);
+    const id = nextId.current++;
+    setMedicines((items) => [...items, { id, name: trimmed, dose: "", frequency: "Twice daily", duration: "", instructions: "" }]);
     setQuery("");
     setSearchOpen(false);
     setError("");
-    requestAnimationFrame(() => document.getElementById(`dose-${nextId.current - 1}`)?.focus());
+    requestAnimationFrame(() => document.getElementById(`dose-${id}`)?.focus());
   }
   function updateMedicine(id: number, field: keyof Medicine, value: string) {
     setMedicines((items) => items.map((item) => item.id === id ? { ...item, [field]: value } : item));
