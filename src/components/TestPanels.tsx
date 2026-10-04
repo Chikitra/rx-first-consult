@@ -97,7 +97,7 @@ function PanelEditor({ panel, catalog, onSave, onCancel, onDelete }: { panel: Te
   const query = q.trim();
   const suggestions = query ? catalog.filter((t) => t.toLowerCase().includes(query.toLowerCase()) && !tests.includes(t)).slice(0, 6) : [];
   const add = (t: string) => { const n = t.trim(); if (n && !tests.some((x) => x.toLowerCase() === n.toLowerCase())) setTests((all) => [...all, n]); setQ(""); };
-  const move = (i: number, d: number) => setTests((all) => { const a = [...all]; const j = i + d; if (j < 0 || j >= a.length) return a; [a[i], a[j]] = [a[j], a[i]]; return a; });
+  const move = (i: number, d: number) => setTests((all) => { const a = [...all]; const j = i + d; if (j < 0 || j >= a.length) return a; const tmp = a[i]!; a[i] = a[j]!; a[j] = tmp; return a; });
 
   return (
     <div className="space-y-4 p-4">
