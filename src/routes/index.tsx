@@ -178,7 +178,7 @@ function Consultation() {
       const existing = medicines.find((m) => m.name.trim().toLowerCase() === name.toLowerCase());
       if (existing) { highlight(existing.id); return; }
       const p = unlisted ? undefined : usualPattern(DOCTOR_ID, name);
-      fresh.push({ id: nextId.current++, name, dose: p?.dose ?? "", frequency: p?.frequency ?? "", duration: p?.duration ?? "", instructions: p?.instructions ?? "", unlisted: unlisted || undefined });
+      fresh.push({ id: nextId.current++, name, dose: p?.dose ?? "", frequency: p?.frequency ?? "", duration: p?.duration ?? "", instructions: p?.instructions ?? "", ...(unlisted ? { unlisted: true } : {}) });
     });
     if (fresh.length) {
       setMedicines((items) => [...items, ...fresh]);
