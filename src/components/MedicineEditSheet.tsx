@@ -6,10 +6,11 @@ import { cn } from "@/lib/utils";
 
 export type Medicine = { id: number; name: string; dose: string; frequency: string; duration: string; instructions: string; unlisted?: boolean; previous?: { name: string; dose: string; frequency: string; duration: string; instructions: string }; stopped?: boolean; sos?: boolean; quantityOverride?: string };
 export type MedicineGroup = "NEW" | "CHANGED" | "CONTINUE" | "STOP";
+const normalize = (value: string) => value.trim().toLowerCase().replace(/\btablet(s)?\b/g, "tab$1").replace(/\bcapsule(s)?\b/g, "cap$1");
 export function groupFor(m: Medicine): MedicineGroup {
   if (m.stopped) return "STOP";
   if (!m.previous) return "NEW";
-  return (["name", "dose", "frequency", "duration", "instructions"] as const).every((key) => m[key].trim().toLowerCase() === m.previous?.[key].trim().toLowerCase()) && !m.sos && !m.quantityOverride ? "CONTINUE" : "CHANGED";
+  return (["name", "dose", "frequency", "duration", "instructions"] as const).every((key) => normalize(m[key]) === normalize(m.previous?.[key] ?? "")) && !m.sos && !m.quantityOverride ? "CONTINUE" : "CHANGED";
 }
 const times: Record<string, number> = { "Once daily": 1, "Twice daily": 2, "Three times daily": 3, "Four times daily": 4, "At bedtime": 1, OD: 1, BD: 2, TDS: 3, QID: 4, HS: 1 };
 export function quantityFor(m: Medicine): string {
@@ -18,7 +19,7 @@ export function quantityFor(m: Medicine): string {
   const dose = m.dose.trim().match(/^(½|1\/2|0\.5|\d+(?:\.\d+)?)\s*(tablet|tab|capsule|cap|sachet|ml|drop)s?\b/i);
   const days = m.duration.trim().match(/^(\d+)\s*(day|days|week|weeks)$/i);
   const perDay = times[m.frequency];
-  if (!dose || !days || !perDay) return "—";
+  if (!dose?.[1] || !dose[2] || !days?.[1] || !days[2] || !perDay) return "—";
   const amount = dose[1] === "½" || dose[1] === "1/2" ? 0.5 : Number(dose[1]);
   const count = amount * perDay * Number(days[1]) * (days[2].toLowerCase().startsWith("week") ? 7 : 1);
   if (!Number.isFinite(count) || count <= 0) return "—";
