@@ -1,0 +1,3 @@
+- [x] Merge complaints, vitals, and examination into the optional Visit workspace.
+- [x] Keep four ordered, directly accessible colour-coded tabs with Previous/Next navigation.
+- [x] Ask unknown allergy status in Visit, retain three distinct states across visits in this browser, and display status in Medicines.
