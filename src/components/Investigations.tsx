@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ClipboardList, FlaskConical, Plus, Search, X } from "lucide-react";
+import { ClipboardList, FlaskConical, Pencil, Plus, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,23 @@ export type InvestigationResult = { id: number; test: string; values: string };
 
 /** Demo list of commonly advised tests — replace with the test catalogue when services are connected. */
 export const commonTests = ["CBC", "HbA1c", "LFT", "KFT", "Lipid Profile", "Urine Routine", "ECG", "Chest X-ray", "TSH", "RBS", "FBS", "PPBS", "Creatinine", "CRP", "ESR", "Vitamin D", "Vitamin B12", "Serum Electrolytes", "USG Abdomen", "Dengue NS1", "Widal"];
+
+/** Configured patient preparation per test (doctor-provided). Tests not listed get no invented preparation. */
+export const testPreparation: Record<string, string> = {
+  fbs: "Fasting: 8–12 hours",
+  "lipid profile": "Fasting: 8–12 hours",
+  ppbs: "2 hours after breakfast",
+  hba1c: "No fasting needed",
+  cbc: "No fasting needed",
+};
+
+export type PrepOverrides = Record<string, string>;
+const pk = (name: string) => name.trim().toLowerCase();
+/** Preparation shown/printed for a test: doctor override if set, otherwise the configured default. */
+export function prepFor(name: string, overrides: PrepOverrides) {
+  const k = pk(name);
+  return (k in overrides ? overrides[k] : testPreparation[k]) ?? "";
+}
 
 export function resultLines(values: string) {
   return values.split(/[\n,;]+/).map((v) => v.trim()).filter(Boolean);
@@ -79,7 +96,7 @@ export function InvestigationResults({ results, setResults }: { results: Investi
 }
 
 /** Investigations → Tests & Advice: tests the patient should get done after today. */
-export function TestsAdvice({ doctorId, tests, setTests, advice, setAdvice }: { doctorId: string; tests: string[]; setTests: (fn: (t: string[]) => string[]) => void; advice: string; setAdvice: (v: string) => void }) {
+export function TestsAdvice({ doctorId, tests, setTests, prep, setPrep, advice, setAdvice }: { doctorId: string; prep: PrepOverrides; setPrep: (fn: (p: PrepOverrides) => PrepOverrides) => void; tests: string[]; setTests: (fn: (t: string[]) => string[]) => void; advice: string; setAdvice: (v: string) => void }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(0);
@@ -106,6 +123,12 @@ export function TestsAdvice({ doctorId, tests, setTests, advice, setAdvice }: { 
     });
   }
 
+  const [editingPrep, setEditingPrep] = useState<string | null>(null);
+  function remove(t: string) {
+    setTests((all) => all.filter((x) => x !== t));
+    setPrep((p) => { const n = { ...p }; delete n[pk(t)]; return n; });
+  }
+
   return (
     <div className="space-y-6">
       <section aria-labelledby="tests-title">
@@ -116,12 +139,29 @@ export function TestsAdvice({ doctorId, tests, setTests, advice, setAdvice }: { 
         </div>
         <SavedPanels doctorId={doctorId} catalog={commonTests} current={tests} onAdd={addMany} />
         {tests.length > 0 ? <ul className="mb-3 space-y-1.5" aria-label="Advised tests">
-          {tests.map((t) => <li key={t} className="flex items-center gap-3 rounded-md border border-dashed border-section-border bg-card px-3 py-2">
-            <span className="h-4 w-4 shrink-0 rounded-sm border-2 border-section-accent" aria-hidden />
-            <span className="flex-1 font-medium">{t}</span>
-            <span className="text-xs text-muted-foreground">Advised</span>
-            <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Remove ${t}`} onClick={() => setTests((all) => all.filter((x) => x !== t))}><X size={14} /></Button>
-          </li>)}
+          {tests.map((t) => {
+            const value = prepFor(t, prep);
+            const isDefault = !(pk(t) in prep) && !!testPreparation[pk(t)];
+            return <li key={t} className="flex items-start gap-3 rounded-md border border-dashed border-section-border bg-card px-3 py-2">
+              <span className="mt-1 h-4 w-4 shrink-0 rounded-sm border-2 border-section-accent" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <span className="block font-medium">{t}</span>
+                {editingPrep === t ? (
+                  <Input autoFocus defaultValue={value} aria-label={`Preparation for ${t}`} className="mt-1 h-8 text-sm" placeholder="e.g. Fasting: 8–12 hours"
+                    onBlur={(e) => { const v = e.target.value.trim(); setPrep((p) => ({ ...p, [pk(t)]: v })); setEditingPrep(null); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setEditingPrep(null); }} />
+                ) : value ? (
+                  <button type="button" className="group flex items-center gap-1 text-left text-xs text-muted-foreground hover:text-foreground" aria-label={`Edit preparation for ${t}: ${value}`} onClick={() => setEditingPrep(t)}>
+                    {value}<Pencil size={11} className="opacity-60 group-hover:opacity-100" />{!isDefault && <span className="ml-1 text-[10px] uppercase tracking-wide">edited</span>}
+                  </button>
+                ) : (
+                  <button type="button" className="flex items-center gap-1 text-xs font-medium text-section-ink hover:underline" onClick={() => setEditingPrep(t)}><Plus size={11} /> Add preparation instruction</button>
+                )}
+              </div>
+              <span className="mt-0.5 text-xs text-muted-foreground">Advised</span>
+              <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Remove ${t}`} onClick={() => remove(t)}><X size={14} /></Button>
+            </li>;
+          })}
         </ul> : <p className="mb-3 text-sm text-muted-foreground">No tests advised yet.</p>}
 
         <div className="relative">

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { FrequentMedicines, recordPrescribed } from "@/components/FrequentMedicines";
 import { catalog, learnPatterns, searchAll, usualPattern, type SearchResult } from "@/lib/medicines";
 import { MedicineEditSheet, groupFor, quantityFor, shortDose, shortFrequency, type Medicine, type MedicineGroup } from "@/components/MedicineEditSheet";
-import { InvestigationResults, TestsAdvice, resultLines, type InvestigationResult } from "@/components/Investigations";
+import { InvestigationResults, TestsAdvice, prepFor, resultLines, type PrepOverrides, type InvestigationResult } from "@/components/Investigations";
 
 // Demo signed-in doctor — replace with the authenticated doctor when services are connected.
 const DOCTOR_ID = "demo-doctor";
@@ -124,6 +124,7 @@ function Consultation() {
   const [examination, setExamination] = useState("");
   const [invResults, setInvResults] = useState<InvestigationResult[]>([]);
   const [advisedTests, setAdvisedTests] = useState<string[]>([]);
+  const [testPrep, setTestPrep] = useState<PrepOverrides>({});
   const [invAdvice, setInvAdvice] = useState("");
   const [followup, setFollowup] = useState("");
   const [followupNote, setFollowupNote] = useState("");
@@ -355,7 +356,7 @@ function Consultation() {
 
           {active === "investigations" && <div className="space-y-5">
             <h2 className="border-l-4 border-section-accent pl-3 text-2xl font-bold text-section-ink">Investigations</h2>
-            <TestsAdvice doctorId={DOCTOR_ID} tests={advisedTests} setTests={setAdvisedTests} advice={invAdvice} setAdvice={setInvAdvice} />
+            <TestsAdvice doctorId={DOCTOR_ID} tests={advisedTests} setTests={setAdvisedTests} prep={testPrep} setPrep={setTestPrep} advice={invAdvice} setAdvice={setInvAdvice} />
             <p className="text-xs text-muted-foreground">Have a report already? Record it in <button type="button" className="font-medium text-primary underline-offset-2 hover:underline" onClick={() => go("visit")}>Visit → Investigation Results</button>.</p>
           </div>}
 
@@ -420,8 +421,8 @@ function Consultation() {
           {invResults.some((r) => r.test.trim() || r.values.trim()) && <p><span className="text-muted-foreground">Investigation results: </span>{invResults.filter((r) => r.test.trim() || r.values.trim()).map((r) => [r.test.trim(), resultLines(r.values).join(", ")].filter(Boolean).join(" — ")).join("; ")}</p>}
         </div>}
         {(advisedTests.length > 0 || invAdvice.trim()) && <div className="border-b border-border py-4 text-sm">
-          <p className="font-semibold">Tests advised</p>
-          {advisedTests.length > 0 && <ul className="mt-1 list-inside list-disc text-muted-foreground">{advisedTests.map((t) => <li key={t}>{t}</li>)}</ul>}
+          <p className="font-semibold uppercase tracking-wide">Tests &amp; Advice</p>
+          {advisedTests.length > 0 && <ul className="mt-2 space-y-1.5">{advisedTests.map((t) => { const p = prepFor(t, testPrep); return <li key={t}><span className="font-medium">{t}</span>{p && <span className="block text-muted-foreground">{p}</span>}</li>; })}</ul>}
           {invAdvice.trim() && <p className="mt-1 text-muted-foreground">{invAdvice}</p>}
         </div>}
         <div className="py-6"><h3 className="mb-5 text-xl font-semibold text-primary">℞ <span className="ml-1 text-base text-foreground">Medicines</span></h3><div className="space-y-5">{medicines.map((medicine, i) => <div key={medicine.id} className="flex gap-4 border-b border-border pb-4 text-sm"><span className="text-muted-foreground">{String(i + 1).padStart(2, "0")}</span><div><p className="font-semibold">{medicine.name}</p><p className="mt-1 text-muted-foreground">{medicine.stopped ? "Stop" : `${medicine.dose} · ${medicine.frequency} · ${medicine.duration}${medicine.sos ? " · SOS" : ""}`}</p>{!medicine.stopped && medicine.instructions && <p className="mt-1 text-muted-foreground">{medicine.instructions}</p>}{!medicine.stopped && quantityFor(medicine) !== "—" && <p className="mt-1 text-muted-foreground">Quantity: {quantityFor(medicine)}</p>}</div></div>)}</div></div>
