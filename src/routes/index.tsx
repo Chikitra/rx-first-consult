@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { FrequentMedicines, recordPrescribed } from "@/components/FrequentMedicines";
 import { catalog, learnPatterns, searchAll, usualPattern, type SearchResult } from "@/lib/medicines";
 import { MedicineEditSheet, groupFor, quantityFor, shortDose, shortFrequency, type Medicine, type MedicineGroup } from "@/components/MedicineEditSheet";
+import { InvestigationResults, TestsAdvice, resultLines, type InvestigationResult } from "@/components/Investigations";
 
 // Demo signed-in doctor — replace with the authenticated doctor when services are connected.
 const DOCTOR_ID = "demo-doctor";
@@ -121,7 +122,9 @@ function Consultation() {
   const [complaints, setComplaints] = useState("");
   const [vitals, setVitals] = useState<Record<VitalKey, string>>({ bp: "", pulse: "", temp: "", spo2: "", weight: "" });
   const [examination, setExamination] = useState("");
-  const [investigations, setInvestigations] = useState("");
+  const [invResults, setInvResults] = useState<InvestigationResult[]>([]);
+  const [advisedTests, setAdvisedTests] = useState<string[]>([]);
+  const [invAdvice, setInvAdvice] = useState("");
   const [followup, setFollowup] = useState("");
   const [followupNote, setFollowupNote] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -144,8 +147,8 @@ function Consultation() {
   const activeMedicines = medicines.filter((m) => !m.stopped);
 
   const filled: Record<SectionKey, boolean> = {
-    visit: !!complaints.trim() || Object.values(vitals).some((v) => !!v.trim()) || !!examination.trim(),
-    investigations: !!investigations.trim(),
+    visit: !!complaints.trim() || Object.values(vitals).some((v) => !!v.trim()) || !!examination.trim() || invResults.length > 0,
+    investigations: advisedTests.length > 0 || !!invAdvice.trim(),
     medicines: medicines.length > 0,
     followup: !!followup.trim() || !!followupNote.trim(),
   };
@@ -345,11 +348,16 @@ function Consultation() {
              <h2 className="border-l-4 border-section-accent pl-3 text-2xl font-bold text-section-ink">Visit</h2>
              <SectionBlock title="Chief Complaints" hint=""><Textarea aria-label="Chief complaints" value={complaints} onChange={(e) => setComplaints(e.target.value)} placeholder="e.g. Fever and sore throat for 3 days" rows={2} /></SectionBlock>
              <SectionBlock title="Vitals" hint=""><div className="grid grid-cols-2 gap-3 sm:grid-cols-5">{vitalFields.map((f) => <label key={f.key} className="block text-xs font-semibold text-muted-foreground">{f.label}<Input inputMode="decimal" value={vitals[f.key]} onChange={(e) => setVitals((v) => ({ ...v, [f.key]: e.target.value }))} placeholder={f.placeholder} className="mt-1.5 h-10 text-foreground" /></label>)}</div></SectionBlock>
-             <SectionBlock title="Examination" hint=""><Textarea aria-label="Examination findings" value={examination} onChange={(e) => setExamination(e.target.value)} placeholder="e.g. Throat congested, chest clear" rows={2} /></SectionBlock>
+              <SectionBlock title="Examination" hint=""><Textarea aria-label="Examination findings" value={examination} onChange={(e) => setExamination(e.target.value)} placeholder="e.g. Throat congested, chest clear" rows={2} /></SectionBlock>
+             <InvestigationResults results={invResults} setResults={setInvResults} />
              <AllergyPanel location="visit" status={allergyStatus} allergies={allergies} editorOpen={allergyEditorOpen} setEditorOpen={setAllergyEditorOpen} input={allergyInput} setInput={setAllergyInput} setAllergies={setAllergies} addAllergy={addAllergy} removeAllergy={removeAllergy} setAllergyState={setAllergyState} />
            </div>}
 
-          {active === "investigations" && <SectionBlock title="Investigations" hint="Tests to advise or results to note."><Textarea autoFocus value={investigations} onChange={(e) => setInvestigations(e.target.value)} placeholder="e.g. CBC, CRP" rows={4} /></SectionBlock>}
+          {active === "investigations" && <div className="space-y-5">
+            <h2 className="border-l-4 border-section-accent pl-3 text-2xl font-bold text-section-ink">Investigations</h2>
+            <TestsAdvice tests={advisedTests} setTests={setAdvisedTests} advice={invAdvice} setAdvice={setInvAdvice} />
+            <p className="text-xs text-muted-foreground">Have a report already? Record it in <button type="button" className="font-medium text-primary underline-offset-2 hover:underline" onClick={() => go("visit")}>Visit → Investigation Results</button>.</p>
+          </div>}
 
           {active === "medicines" && <section aria-labelledby="prescription-title">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
@@ -405,11 +413,16 @@ function Consultation() {
 
       <MedicineEditSheet medicine={activeMedicine} onClose={() => setEditingMedicineId(null)} onSave={(updated) => { setMedicines((items) => items.map((item) => item.id === updated.id ? updated : item)); setError(""); }} onRemove={(id) => setMedicines((items) => items.filter((item) => item.id !== id))} />
       {previewOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-3 sm:p-6 print:static print:block print:bg-background print:p-0" role="dialog" aria-modal="true" aria-label="Prescription preview" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewOpen(false); }}><div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-md bg-card shadow-2xl print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:shadow-none"><div className="flex items-center justify-between gap-2 border-b border-border px-5 py-4 print:hidden"><div><h2 className="font-bold">Prescription ready</h2><p className="text-xs text-muted-foreground">Review and print your prescription</p></div><Button variant="ghost" size="icon" aria-label="Close preview" onClick={() => setPreviewOpen(false)}><X size={19} /></Button></div><div className="overflow-y-auto px-5 py-6 sm:px-10 sm:py-9 print:overflow-visible print:px-10 print:py-8"><div className="flex items-start justify-between gap-4 border-b-2 border-primary pb-5"><div><div className="flex items-center gap-2 text-xl font-bold text-primary"><Activity size={22} /> Chikitra</div><p className="mt-1 text-xs text-muted-foreground">Doctor consultation prescription</p></div><div className="text-right text-xs text-muted-foreground"><p>Dr. Ankeeta Roy</p><p>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p></div></div><div className="grid grid-cols-2 gap-4 border-b border-border py-5 text-sm"><div><p className="text-xs text-muted-foreground">PATIENT</p><p className="mt-1 font-semibold">Ankeeta Roy</p><p className="text-muted-foreground">26 years · Female</p></div><div className="text-right"><p className="text-xs text-muted-foreground">PATIENT ID</p><p className="mt-1 font-medium">P6231C</p></div></div>
-        {(complaints.trim() || vitalsText || examination.trim() || investigations.trim()) && <div className="space-y-1.5 border-b border-border py-4 text-sm">
+        {(complaints.trim() || vitalsText || examination.trim() || invResults.length > 0) && <div className="space-y-1.5 border-b border-border py-4 text-sm">
           {complaints.trim() && <p><span className="text-muted-foreground">Complaints: </span>{complaints}</p>}
           {vitalsText && <p><span className="text-muted-foreground">Vitals: </span>{vitalsText}</p>}
           {examination.trim() && <p><span className="text-muted-foreground">Examination: </span>{examination}</p>}
-          {investigations.trim() && <p><span className="text-muted-foreground">Investigations: </span>{investigations}</p>}
+          {invResults.length > 0 && <p><span className="text-muted-foreground">Investigation results: </span>{invResults.map((r) => `${r.test} — ${resultLines(r.values).join(", ")}`).join("; ")}</p>}
+        </div>}
+        {(advisedTests.length > 0 || invAdvice.trim()) && <div className="border-b border-border py-4 text-sm">
+          <p className="font-semibold">Tests advised</p>
+          {advisedTests.length > 0 && <ul className="mt-1 list-inside list-disc text-muted-foreground">{advisedTests.map((t) => <li key={t}>{t}</li>)}</ul>}
+          {invAdvice.trim() && <p className="mt-1 text-muted-foreground">{invAdvice}</p>}
         </div>}
         <div className="py-6"><h3 className="mb-5 text-xl font-semibold text-primary">℞ <span className="ml-1 text-base text-foreground">Medicines</span></h3><div className="space-y-5">{medicines.map((medicine, i) => <div key={medicine.id} className="flex gap-4 border-b border-border pb-4 text-sm"><span className="text-muted-foreground">{String(i + 1).padStart(2, "0")}</span><div><p className="font-semibold">{medicine.name}</p><p className="mt-1 text-muted-foreground">{medicine.stopped ? "Stop" : `${medicine.dose} · ${medicine.frequency} · ${medicine.duration}${medicine.sos ? " · SOS" : ""}`}</p>{!medicine.stopped && medicine.instructions && <p className="mt-1 text-muted-foreground">{medicine.instructions}</p>}{!medicine.stopped && quantityFor(medicine) !== "—" && <p className="mt-1 text-muted-foreground">Quantity: {quantityFor(medicine)}</p>}</div></div>)}</div></div>
         {filled.followup && <div className="text-sm"><span className="font-semibold">Follow-up: </span>{[followup && `After ${followup}`, followupNote.trim()].filter(Boolean).join(" — ")}</div>}

@@ -14,3 +14,4 @@
 - Keep allergy status as three explicit patient-scoped browser states shared between Visit and Medicines until patient services are connected; unrecorded must never be inferred as no known allergies, and an established answer should not be asked again.
 - Define consultation-section accent, ink, tint, and border colors by section in global CSS so tabs and active panels share one semantic identity without altering prescription actions.
 - Keep medicine rows grouped by inferred comparison with the relevant repeated prescription, with chip-first editing in a sheet; calculate quantity only for parseable finite regimens, otherwise require an explicit override, to avoid unsafe inferred quantities.
+- Investigations split: results in Visit, tests in Investigations → Tests & Advice.
