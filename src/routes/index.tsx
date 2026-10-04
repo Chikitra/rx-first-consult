@@ -6,6 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { FrequentMedicines, recordPrescribed } from "@/components/FrequentMedicines";
+
+// Demo signed-in doctor — replace with the authenticated doctor when services are connected.
+const DOCTOR_ID = "demo-doctor";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -47,7 +51,7 @@ const catalog = [
   "Azithromycin 500 mg tablet", "Cetirizine 10 mg tablet", "Pantoprazole 40 mg tablet",
   "Omeprazole 20 mg capsule", "Metformin 500 mg tablet", "Amlodipine 5 mg tablet",
   "Losartan 50 mg tablet", "Ibuprofen 400 mg tablet", "ORS sachet",
-  "Vitamin D3 60,000 IU capsule", "Montelukast 10 mg tablet", "Dolo 650 tablet",
+  "Vitamin D3 60,000 IU capsule", "Montelukast 10 mg tablet", "Dolo 650 tablet", "Ondansetron 4 mg tablet",
 ];
 const frequencyOptions = ["Once daily", "Twice daily", "Three times daily", "Four times daily", "At bedtime", "As needed"];
 const followupPresets = ["3 days", "5 days", "1 week", "2 weeks", "1 month"];
@@ -137,6 +141,7 @@ function Consultation() {
   const [allergyEditorOpen, setAllergyEditorOpen] = useState(false);
   const [allergyInput, setAllergyInput] = useState("");
   const [error, setError] = useState("");
+  const [highlightId, setHighlightId] = useState<number | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(1);
   const match = catalog.filter((item) => item.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 5);
@@ -164,15 +169,26 @@ function Consultation() {
   }, [active]);
 
   function go(key: SectionKey) { setActive(key); setError(""); }
-  function addMedicine(name: string) {
+  function addMedicine(name: string, frequency = "Twice daily") {
     const trimmed = name.trim();
     if (!trimmed) { searchRef.current?.focus(); return; }
     const id = nextId.current++;
-    setMedicines((items) => [...items, { id, name: trimmed, dose: "", frequency: "Twice daily", duration: "", instructions: "" }]);
+    setMedicines((items) => [...items, { id, name: trimmed, dose: "", frequency, duration: "", instructions: "" }]);
     setQuery("");
     setSearchOpen(false);
     setError("");
     requestAnimationFrame(() => document.getElementById(`dose-${id}`)?.focus());
+  }
+  function pickFrequent(name: string) {
+    const existing = medicines.find((m) => m.name.trim().toLowerCase() === name.toLowerCase());
+    if (existing) {
+      setHighlightId(existing.id);
+      document.getElementById(`med-${existing.id}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+      window.setTimeout(() => setHighlightId((h) => (h === existing.id ? null : h)), 1400);
+      return;
+    }
+    // Chips add the medicine only; the doctor sets dose, frequency and duration.
+    addMedicine(name, "");
   }
   function repeatMedicines(items: PastMedicine[]) {
     const added = items.map((item) => ({ ...item, id: nextId.current++ }));
@@ -216,6 +232,7 @@ function Consultation() {
       return;
     }
     setError("");
+    recordPrescribed(DOCTOR_ID, medicines.map((m) => m.name.trim()));
     setPreviewOpen(true);
   }
   function onTabKey(event: React.KeyboardEvent) {
@@ -340,13 +357,14 @@ function Consultation() {
                  {!exactMatch && <Button variant="ghost" className="h-auto w-full justify-start rounded-none border-t border-border px-4 py-3 text-left font-medium text-section-ink" onMouseDown={(event) => event.preventDefault()} onClick={() => addMedicine(query)} role="option" aria-selected="false"><Plus size={15} /> Add “{query.trim()}” manually</Button>}
               </div>}
             </div>
+             <FrequentMedicines doctorId={DOCTOR_ID} currentNames={medicines.map((m) => m.name.trim().toLowerCase())} onPick={pickFrequent} />
              <h3 className="mt-6 mb-1 text-xs font-bold uppercase tracking-wider text-section-ink">Current prescription <span className="font-medium normal-case tracking-normal text-muted-foreground">· today</span></h3>
              {medicines.length === 0 ? <div className="mt-2 flex min-h-44 flex-col items-center justify-center rounded-md border border-dashed border-section-border bg-card px-4 py-8 text-center"><span className="mb-3 flex size-10 items-center justify-center rounded-md bg-section-soft text-section-ink"><Plus size={21} /></span><h3 className="font-semibold">Start prescription</h3><p className="mt-1 max-w-xs text-sm text-muted-foreground">Search for a medicine above or enter one manually.</p></div> : <div className="mt-5 space-y-3">
-              {medicines.map((medicine, i) => <div key={medicine.id} className="rounded-md border border-border bg-card p-4 sm:p-5">
+              {medicines.map((medicine, i) => <div key={medicine.id} id={`med-${medicine.id}`} className={cn("rounded-md border border-border bg-card p-4 transition-shadow duration-500 sm:p-5", highlightId === medicine.id && "ring-2 ring-section-accent")}>
                  <div className="mb-4 flex items-start justify-between gap-3"><div className="flex min-w-0 flex-1 items-start gap-3"><span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-section-soft text-xs font-bold text-section-ink">{String(i + 1).padStart(2, "0")}</span><div className="min-w-0 flex-1">{editingMedicineId === medicine.id ? <Input autoFocus aria-label="Medicine name" value={medicine.name} onChange={(event) => updateMedicine(medicine.id, "name", event.target.value)} onBlur={() => setEditingMedicineId(null)} onKeyDown={(event) => { if (event.key === "Enter") setEditingMedicineId(null); }} /> : <h3 className="break-words font-semibold leading-7">{medicine.name}</h3>}</div></div><div className="flex shrink-0 items-center"><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={`Edit ${medicine.name} name`} title="Edit medicine name" onMouseDown={(event) => event.preventDefault()} onClick={() => setEditingMedicineId(medicine.id)}><Pencil size={16} /></Button><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" aria-label={`Remove ${medicine.name}`} title="Remove medicine" onClick={() => setMedicines((items) => items.filter((item) => item.id !== medicine.id))}><Trash2 size={16} /></Button></div></div>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   <label className="block min-w-0 text-xs font-semibold text-muted-foreground">Dose<Input id={`dose-${medicine.id}`} value={medicine.dose} onChange={(event) => updateMedicine(medicine.id, "dose", event.target.value)} placeholder="e.g. 1 tablet" className="mt-1.5 h-10 text-foreground" /></label>
-                  <div className="min-w-0 text-xs font-semibold text-muted-foreground"><label htmlFor={`frequency-${medicine.id}`}>Frequency</label><Select value={medicine.frequency} onValueChange={(value) => updateMedicine(medicine.id, "frequency", value)}><SelectTrigger id={`frequency-${medicine.id}`} className="mt-1.5 h-10 font-normal text-foreground"><SelectValue /></SelectTrigger><SelectContent>{frequencyOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="min-w-0 text-xs font-semibold text-muted-foreground"><label htmlFor={`frequency-${medicine.id}`}>Frequency</label><Select value={medicine.frequency} onValueChange={(value) => updateMedicine(medicine.id, "frequency", value)}><SelectTrigger id={`frequency-${medicine.id}`} className="mt-1.5 h-10 font-normal text-foreground"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{frequencyOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
                   <label className="block min-w-0 text-xs font-semibold text-muted-foreground">Duration<Input value={medicine.duration} onChange={(event) => updateMedicine(medicine.id, "duration", event.target.value)} placeholder="e.g. 5 days" className="mt-1.5 h-10 text-foreground" /></label>
                   <label className="col-span-2 block min-w-0 text-xs font-semibold text-muted-foreground sm:col-span-3">Instructions <span className="font-normal">(optional)</span><Input value={medicine.instructions} onChange={(event) => updateMedicine(medicine.id, "instructions", event.target.value)} placeholder="e.g. After food" className="mt-1.5 h-10 text-foreground" /></label>
                 </div>
