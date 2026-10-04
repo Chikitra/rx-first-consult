@@ -74,7 +74,7 @@ export function FrequentMedicines({ doctorId, currentNames, onPick }: { doctorId
   function move(i: number, dir: -1 | 1) {
     const next = [...list]; const j = i + dir;
     if (j < 0 || j >= next.length) return;
-    [next[i], next[j]] = [next[j], next[i]];
+    const tmp = next[i]!; next[i] = next[j]!; next[j] = tmp;
     save({ ...prefs!, order: next });
   }
   function addManual() {
