@@ -27,13 +27,11 @@ export const Route = createFileRoute("/")({
 });
 
 type AllergyStatus = "unknown" | "none" | "known";
-type SectionKey = "complaints" | "vitals" | "examination" | "investigations" | "medicines" | "followup";
+type SectionKey = "visit" | "investigations" | "medicines" | "followup";
 type VitalKey = "bp" | "pulse" | "temp" | "spo2" | "weight";
 
 const sections: { key: SectionKey; label: string }[] = [
-  { key: "complaints", label: "Chief Complaints" },
-  { key: "vitals", label: "Vitals" },
-  { key: "examination", label: "Examination" },
+  { key: "visit", label: "Visit" },
   { key: "investigations", label: "Investigations" },
   { key: "medicines", label: "Medicines" },
   { key: "followup", label: "Follow-up" },
@@ -133,6 +131,7 @@ function Consultation() {
   const [allergies, setAllergies] = useState<string[]>([]);
   const [allergyEditorOpen, setAllergyEditorOpen] = useState(false);
   const [allergyInput, setAllergyInput] = useState("");
+  const [allergyLoaded, setAllergyLoaded] = useState(false);
   const [error, setError] = useState("");
   const [highlightId, setHighlightId] = useState<number | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -145,13 +144,30 @@ function Consultation() {
   const activeMedicines = medicines.filter((m) => !m.stopped);
 
   const filled: Record<SectionKey, boolean> = {
-    complaints: !!complaints.trim(),
-    vitals: Object.values(vitals).some((v) => v.trim()),
-    examination: !!examination.trim(),
+    visit: !!complaints.trim() || Object.values(vitals).some((v) => !!v.trim()) || !!examination.trim(),
     investigations: !!investigations.trim(),
     medicines: medicines.length > 0,
     followup: !!followup.trim() || !!followupNote.trim(),
   };
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem("chikitra:patient:P6231C:allergies") ?? "null");
+      if (saved?.status === "none") { setAllergyStatus("none"); setAllergies([]); }
+      else if (saved?.status === "known" && Array.isArray(saved.allergies)) {
+        const names = saved.allergies.filter((name: unknown): name is string => typeof name === "string" && !!name.trim());
+        if (names.length) { setAllergyStatus("known"); setAllergies(names); }
+      }
+    } catch { /* Browser storage may be unavailable; keep the status unknown. */ }
+    setAllergyLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!allergyLoaded) return;
+    try {
+      window.localStorage.setItem("chikitra:patient:P6231C:allergies", JSON.stringify({ status: allergyStatus, allergies }));
+    } catch { /* Continue the consultation when browser storage is unavailable. */ }
+  }, [allergyLoaded, allergyStatus, allergies]);
 
   useEffect(() => {
     if (!previewOpen) return;
@@ -324,13 +340,13 @@ function Consultation() {
             </div>
           )}
 
-          {active === "complaints" && <SectionBlock title="Chief Complaints" hint="What brings the patient in today?"><Textarea autoFocus value={complaints} onChange={(e) => setComplaints(e.target.value)} placeholder="e.g. Fever and sore throat for 3 days" rows={4} /></SectionBlock>}
-
-          {active === "vitals" && <SectionBlock title="Vitals" hint="Fill only what you measured.">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">{vitalFields.map((f, i) => <label key={f.key} className="block text-xs font-semibold text-muted-foreground">{f.label}<Input autoFocus={i === 0} inputMode="decimal" value={vitals[f.key]} onChange={(e) => setVitals((v) => ({ ...v, [f.key]: e.target.value }))} placeholder={f.placeholder} className="mt-1.5 h-10 text-foreground" /></label>)}</div>
-          </SectionBlock>}
-
-          {active === "examination" && <SectionBlock title="Examination" hint="Key findings, if any."><Textarea autoFocus value={examination} onChange={(e) => setExamination(e.target.value)} placeholder="e.g. Throat congested, chest clear" rows={4} /></SectionBlock>}
+           {active === "visit" && <div className="space-y-6">
+             <h2 className="border-l-4 border-section-accent pl-3 text-2xl font-bold text-section-ink">Visit</h2>
+             <SectionBlock title="Chief Complaints" hint=""><Textarea aria-label="Chief complaints" value={complaints} onChange={(e) => setComplaints(e.target.value)} placeholder="e.g. Fever and sore throat for 3 days" rows={2} /></SectionBlock>
+             <SectionBlock title="Vitals" hint=""><div className="grid grid-cols-2 gap-3 sm:grid-cols-5">{vitalFields.map((f) => <label key={f.key} className="block text-xs font-semibold text-muted-foreground">{f.label}<Input inputMode="decimal" value={vitals[f.key]} onChange={(e) => setVitals((v) => ({ ...v, [f.key]: e.target.value }))} placeholder={f.placeholder} className="mt-1.5 h-10 text-foreground" /></label>)}</div></SectionBlock>
+             <SectionBlock title="Examination" hint=""><Textarea aria-label="Examination findings" value={examination} onChange={(e) => setExamination(e.target.value)} placeholder="e.g. Throat congested, chest clear" rows={2} /></SectionBlock>
+             <AllergyPanel location="visit" status={allergyStatus} allergies={allergies} editorOpen={allergyEditorOpen} setEditorOpen={setAllergyEditorOpen} input={allergyInput} setInput={setAllergyInput} setAllergies={setAllergies} addAllergy={addAllergy} removeAllergy={removeAllergy} setAllergyState={setAllergyState} />
+           </div>}
 
           {active === "investigations" && <SectionBlock title="Investigations" hint="Tests to advise or results to note."><Textarea autoFocus value={investigations} onChange={(e) => setInvestigations(e.target.value)} placeholder="e.g. CBC, CRP" rows={4} /></SectionBlock>}
 
@@ -339,23 +355,7 @@ function Consultation() {
                <h2 id="prescription-title" className="border-l-4 border-section-accent pl-3 text-2xl font-bold text-section-ink">Medicines</h2>
               <span className="text-sm text-muted-foreground">{medicines.length} {medicines.length === 1 ? "medicine" : "medicines"}</span>
             </div>
-             <div className={cn("mb-4 rounded-md border px-3 py-3 sm:px-4", allergyStatus === "known" ? "border-allergy-alert-border bg-allergy-alert text-allergy-alert-foreground" : allergyStatus === "none" ? "border-allergy-clear-border bg-allergy-clear text-allergy-clear-foreground" : "border-allergy-unknown-border bg-allergy-unknown text-allergy-unknown-foreground")} aria-label="Patient drug allergy status">
-               <div className="flex items-start justify-between gap-2">
-                 <div className="flex min-w-0 items-start gap-2.5">
-                   {allergyStatus === "none" ? <Check size={19} className="mt-0.5 shrink-0" aria-hidden="true" /> : <AlertTriangle size={19} className="mt-0.5 shrink-0" aria-hidden="true" />}
-                   <div className="min-w-0">
-                     <p className="font-semibold">{allergyStatus === "known" ? "Drug Allergies" : allergyStatus === "none" ? "No known drug allergies" : "Allergy status not recorded"}</p>
-                     {allergyStatus === "known" && <p className="mt-1 break-words text-sm">{allergies.join(" · ")}</p>}
-                   </div>
-                 </div>
-                 <Button size="sm" variant="ghost" className="shrink-0 text-inherit hover:bg-background/60 hover:text-inherit" aria-expanded={allergyEditorOpen} aria-controls="allergy-editor" onClick={() => setAllergyEditorOpen((open) => !open)}>{allergyStatus === "unknown" ? <><Plus size={15} /> Add allergy</> : "Edit"}</Button>
-               </div>
-               {allergyEditorOpen && <div id="allergy-editor" className="mt-3 border-t border-current/20 pt-3">
-                 {allergies.length > 0 && <div className="mb-3 space-y-2">{allergies.map((allergy, index) => <div key={index} className="flex items-center gap-2"><Input aria-label={`Allergy ${index + 1}`} value={allergy} onChange={(event) => { const value = event.target.value; setAllergies((items) => items.map((item, i) => i === index ? value : item)); }} onBlur={() => { if (!allergies[index]?.trim()) removeAllergy(index); }} className="h-9 bg-card text-foreground" /><Button size="icon" variant="ghost" className="shrink-0 text-inherit" aria-label={`Remove ${allergy}`} title="Remove allergy" onClick={() => removeAllergy(index)}><Trash2 size={16} /></Button></div>)}</div>}
-                 <div className="flex gap-2"><Input aria-label="New drug allergy" placeholder="Drug or substance name" value={allergyInput} onChange={(event) => setAllergyInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addAllergy(); } }} className="h-9 min-w-0 bg-card text-foreground" /><Button size="sm" variant="outline" className="shrink-0" onClick={addAllergy} disabled={!allergyInput.trim()}><Plus size={15} /> Add</Button></div>
-                 <div className="mt-3 flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" onClick={() => setAllergyState("none")}><Check size={15} /> No known drug allergies</Button>{allergyStatus !== "unknown" && <Button size="sm" variant="ghost" className="text-inherit hover:text-inherit" onClick={() => setAllergyState("unknown")}>Mark not recorded</Button>}</div>
-               </div>}
-             </div>
+             <AllergyPanel location="medicines" status={allergyStatus} allergies={allergies} editorOpen={allergyEditorOpen} setEditorOpen={setAllergyEditorOpen} input={allergyInput} setInput={setAllergyInput} setAllergies={setAllergies} addAllergy={addAllergy} removeAllergy={removeAllergy} setAllergyState={setAllergyState} />
             <LastPrescription currentNames={medicines.map((m) => m.name.toLowerCase())} onRepeat={repeatMedicines} onStop={stopPrevious} />
             <div className="relative z-10" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSearchOpen(false); }}>
                <div className="flex items-center gap-2 rounded-md border border-section-accent bg-card p-1.5 shadow-sm focus-within:ring-2 focus-within:ring-section-accent/25">
@@ -421,8 +421,35 @@ function SectionBlock({ title, hint, children }: { title: string; hint: string; 
   return (
     <section>
        <h2 className="border-l-4 border-section-accent pl-3 text-xl font-bold text-section-ink">{title}</h2>
-      <p className="mb-4 mt-1 text-sm text-muted-foreground">{hint}</p>
-      {children}
+       {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
+       <div className="mt-3">{children}</div>
     </section>
   );
+}
+
+function AllergyPanel({ location, status, allergies, editorOpen, setEditorOpen, input, setInput, setAllergies, addAllergy, removeAllergy, setAllergyState }: {
+  location: "visit" | "medicines"; status: AllergyStatus; allergies: string[]; editorOpen: boolean;
+  setEditorOpen: React.Dispatch<React.SetStateAction<boolean>>; input: string; setInput: (value: string) => void;
+  setAllergies: React.Dispatch<React.SetStateAction<string[]>>; addAllergy: () => void;
+  removeAllergy: (index: number) => void; setAllergyState: (status: "none" | "unknown") => void;
+}) {
+  const question = location === "visit" && status === "unknown";
+  const editorId = `allergy-editor-${location}`;
+  return <section className={cn("rounded-md border px-3 py-3 sm:px-4", location === "medicines" && "mb-4", status === "known" ? "border-allergy-alert-border bg-allergy-alert text-allergy-alert-foreground" : status === "none" ? "border-allergy-clear-border bg-allergy-clear text-allergy-clear-foreground" : "border-allergy-unknown-border bg-allergy-unknown text-allergy-unknown-foreground")} aria-label="Patient drug allergy status">
+    <div className="flex items-start justify-between gap-2">
+      <div className="flex min-w-0 items-start gap-2.5">
+        {status === "none" ? <Check size={19} className="mt-0.5 shrink-0" aria-hidden="true" /> : <AlertTriangle size={19} className="mt-0.5 shrink-0" aria-hidden="true" />}
+        <div className="min-w-0"><h3 className="font-semibold">{question ? "Drug allergies?" : status === "known" ? "Drug allergies" : status === "none" ? "No known drug allergies" : "Allergy status not recorded"}</h3>
+          {status === "known" && <p className="mt-1 break-words text-sm">{allergies.join(" · ")}</p>}
+        </div>
+      </div>
+      {!question && <Button size="sm" variant="ghost" className="shrink-0 text-inherit hover:bg-background/60 hover:text-inherit" aria-expanded={editorOpen} aria-controls={editorId} onClick={() => setEditorOpen((open) => !open)}>{status === "unknown" ? "Record" : "Edit"}</Button>}
+    </div>
+    {question && <div className="mt-3 flex flex-wrap gap-2 pl-7"><Button size="sm" variant="outline" aria-expanded={editorOpen} aria-controls={editorId} onClick={() => setEditorOpen(true)}>Yes</Button><Button size="sm" variant="outline" onClick={() => setAllergyState("none")}>No known drug allergies</Button></div>}
+    {editorOpen && <div id={editorId} className="mt-3 border-t border-current/20 pt-3">
+      {allergies.length > 0 && <div className="mb-3 space-y-2">{allergies.map((allergy, index) => <div key={index} className="flex items-center gap-2"><Input aria-label={`Allergy ${index + 1}`} value={allergy} onChange={(event) => { const value = event.target.value; setAllergies((items) => items.map((item, i) => i === index ? value : item)); }} onBlur={() => { if (!allergies[index]?.trim()) removeAllergy(index); }} className="h-9 bg-card text-foreground" /><Button size="icon" variant="ghost" className="shrink-0 text-inherit" aria-label={`Remove ${allergy}`} title="Remove allergy" onClick={() => removeAllergy(index)}><Trash2 size={16} /></Button></div>)}</div>}
+      <div className="flex gap-2"><Input aria-label="New drug allergy" placeholder="Drug or substance name" value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addAllergy(); } }} className="h-9 min-w-0 bg-card text-foreground" /><Button size="sm" variant="outline" className="shrink-0" onClick={addAllergy} disabled={!input.trim()}><Plus size={15} /> Add</Button></div>
+      <div className="mt-3 flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" onClick={() => setAllergyState("none")}><Check size={15} /> No known drug allergies</Button>{status !== "unknown" && <Button size="sm" variant="ghost" className="text-inherit hover:text-inherit" onClick={() => setAllergyState("unknown")}>Mark not recorded</Button>}</div>
+    </div>}
+  </section>;
 }
