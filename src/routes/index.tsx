@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { FrequentMedicines, recordPrescribed } from "@/components/FrequentMedicines";
+import { catalog, learnPatterns, searchAll, usualPattern, type SearchResult } from "@/lib/medicines";
 
 // Demo signed-in doctor — replace with the authenticated doctor when services are connected.
 const DOCTOR_ID = "demo-doctor";
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/")({
   component: Consultation,
 });
 
-type Medicine = { id: number; name: string; dose: string; frequency: string; duration: string; instructions: string };
+type Medicine = { id: number; name: string; dose: string; frequency: string; duration: string; instructions: string; unlisted?: boolean };
 type AllergyStatus = "unknown" | "none" | "known";
 type SectionKey = "complaints" | "vitals" | "examination" | "investigations" | "medicines" | "followup";
 type VitalKey = "bp" | "pulse" | "temp" | "spo2" | "weight";
@@ -46,13 +47,7 @@ const vitalFields: { key: VitalKey; label: string; placeholder: string }[] = [
   { key: "weight", label: "Weight (kg)", placeholder: "60" },
 ];
 
-const catalog = [
-  "Paracetamol 500 mg tablet", "Paracetamol 650 mg tablet", "Amoxicillin 500 mg capsule",
-  "Azithromycin 500 mg tablet", "Cetirizine 10 mg tablet", "Pantoprazole 40 mg tablet",
-  "Omeprazole 20 mg capsule", "Metformin 500 mg tablet", "Amlodipine 5 mg tablet",
-  "Losartan 50 mg tablet", "Ibuprofen 400 mg tablet", "ORS sachet",
-  "Vitamin D3 60,000 IU capsule", "Montelukast 10 mg tablet", "Dolo 650 tablet", "Ondansetron 4 mg tablet",
-];
+const chipName = (n: string) => n.replace(/\s+(tablet|capsule|sachet|syrup)s?$/i, "");
 const frequencyOptions = ["Once daily", "Twice daily", "Three times daily", "Four times daily", "At bedtime", "As needed"];
 const followupPresets = ["3 days", "5 days", "1 week", "2 weeks", "1 month"];
 
@@ -144,8 +139,8 @@ function Consultation() {
   const [highlightId, setHighlightId] = useState<number | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(1);
-  const match = catalog.filter((item) => item.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 5);
-  const exactMatch = catalog.some((item) => item.toLowerCase() === query.trim().toLowerCase());
+  const [activeResult, setActiveResult] = useState(0);
+  const results = searchAll(query);
   const index = sections.findIndex((s) => s.key === active);
 
   const filled: Record<SectionKey, boolean> = {
@@ -169,27 +164,35 @@ function Consultation() {
   }, [active]);
 
   function go(key: SectionKey) { setActive(key); setError(""); }
-  function addMedicine(name: string, frequency = "Twice daily") {
-    const trimmed = name.trim();
-    if (!trimmed) { searchRef.current?.focus(); return; }
-    const id = nextId.current++;
-    setMedicines((items) => [...items, { id, name: trimmed, dose: "", frequency, duration: "", instructions: "" }]);
-    setQuery("");
-    setSearchOpen(false);
-    setError("");
-    requestAnimationFrame(() => document.getElementById(`dose-${id}`)?.focus());
+  function highlight(id: number) {
+    setHighlightId(id);
+    document.getElementById(`med-${id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    window.setTimeout(() => setHighlightId((h) => (h === id ? null : h)), 1400);
   }
-  function pickFrequent(name: string) {
-    const existing = medicines.find((m) => m.name.trim().toLowerCase() === name.toLowerCase());
-    if (existing) {
-      setHighlightId(existing.id);
-      document.getElementById(`med-${existing.id}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
-      window.setTimeout(() => setHighlightId((h) => (h === existing.id ? null : h)), 1400);
-      return;
+  // Single entry point for search, sets and frequent chips: add with the doctor's usual pattern, then clear and keep search focused.
+  function addNames(names: string[], unlisted = false) {
+    const fresh: Medicine[] = [];
+    names.forEach((raw) => {
+      const name = raw.trim();
+      if (!name) return;
+      const existing = medicines.find((m) => m.name.trim().toLowerCase() === name.toLowerCase());
+      if (existing) { highlight(existing.id); return; }
+      const p = unlisted ? undefined : usualPattern(DOCTOR_ID, name);
+      fresh.push({ id: nextId.current++, name, dose: p?.dose ?? "", frequency: p?.frequency ?? "", duration: p?.duration ?? "", instructions: p?.instructions ?? "", unlisted: unlisted || undefined });
+    });
+    if (fresh.length) {
+      setMedicines((items) => [...items, ...fresh]);
+      const last = fresh[fresh.length - 1]!.id;
+      requestAnimationFrame(() => highlight(last));
     }
-    // Chips add the medicine only; the doctor sets dose, frequency and duration.
-    addMedicine(name, "");
+    setQuery("");
+    setActiveResult(0);
+    setError("");
+    searchRef.current?.focus();
   }
+  function addFromSearch(name: string, unlisted = false) { addNames([name], unlisted); }
+  function selectResult(r: SearchResult) { addNames(r.kind === "set" ? r.set.items : [r.item.name]); }
+  function pickFrequent(name: string) { addNames([name], !catalog.some((c) => c.name.toLowerCase() === name.toLowerCase()) && !usualPattern(DOCTOR_ID, name)); }
   function repeatMedicines(items: PastMedicine[]) {
     const added = items.map((item) => ({ ...item, id: nextId.current++ }));
     setMedicines((current) => [...current, ...added]);
@@ -233,6 +236,7 @@ function Consultation() {
     }
     setError("");
     recordPrescribed(DOCTOR_ID, medicines.map((m) => m.name.trim()));
+    learnPatterns(DOCTOR_ID, medicines);
     setPreviewOpen(true);
   }
   function onTabKey(event: React.KeyboardEvent) {
