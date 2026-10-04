@@ -13,3 +13,4 @@
 - Keep clinical context optional and secondary to medicines; the consultation must never gate prescription generation on documentation.
 - Keep allergy status as three explicit client-side states in the medicines workspace until patient services are connected; unrecorded must never be inferred as no known allergies.
 - Define consultation-section accent, ink, tint, and border colors by section in global CSS so tabs and active panels share one semantic identity without altering prescription actions.
+- Keep medicine rows grouped by inferred comparison with the relevant repeated prescription, with chip-first editing in a sheet; calculate quantity only for parseable finite regimens, otherwise require an explicit override, to avoid unsafe inferred quantities.

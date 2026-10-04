@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Activity, AlertTriangle, ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, FileText, History, Pencil, Plus, Printer, Search, Trash2, X } from "lucide-react";
+import { Activity, AlertTriangle, ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, FileText, History, Plus, Printer, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { FrequentMedicines, recordPrescribed } from "@/components/FrequentMedicines";
 import { catalog, learnPatterns, searchAll, usualPattern, type SearchResult } from "@/lib/medicines";
+import { MedicineEditSheet, groupFor, quantityFor, shortDose, shortFrequency, type Medicine, type MedicineGroup } from "@/components/MedicineEditSheet";
 
 // Demo signed-in doctor — replace with the authenticated doctor when services are connected.
 const DOCTOR_ID = "demo-doctor";
@@ -26,7 +26,6 @@ export const Route = createFileRoute("/")({
   component: Consultation,
 });
 
-type Medicine = { id: number; name: string; dose: string; frequency: string; duration: string; instructions: string; unlisted?: boolean };
 type AllergyStatus = "unknown" | "none" | "known";
 type SectionKey = "complaints" | "vitals" | "examination" | "investigations" | "medicines" | "followup";
 type VitalKey = "bp" | "pulse" | "temp" | "spo2" | "weight";
@@ -48,10 +47,9 @@ const vitalFields: { key: VitalKey; label: string; placeholder: string }[] = [
 ];
 
 const chipName = (n: string) => n.replace(/\s+(tablet|capsule|sachet|syrup)s?$/i, "");
-const frequencyOptions = ["Once daily", "Twice daily", "Three times daily", "Four times daily", "At bedtime", "As needed"];
 const followupPresets = ["3 days", "5 days", "1 week", "2 weeks", "1 month"];
 
-type PastMedicine = Omit<Medicine, "id">;
+type PastMedicine = Pick<Medicine, "name" | "dose" | "frequency" | "duration" | "instructions">;
 type PastPrescription = { date: string; doctor: string; medicines: PastMedicine[] };
 // Demo history, most recent first — replace with patient records when services are connected.
 const pastPrescriptions: PastPrescription[] = [
@@ -66,7 +64,7 @@ const pastPrescriptions: PastPrescription[] = [
   ] },
 ];
 
-function LastPrescription({ currentNames, onRepeat }: { currentNames: string[]; onRepeat: (items: PastMedicine[]) => void }) {
+function LastPrescription({ currentNames, onRepeat, onStop }: { currentNames: string[]; onRepeat: (items: PastMedicine[]) => void; onStop: (item: PastMedicine) => void }) {
   const [index, setIndex] = useState(0);
   const rx = pastPrescriptions[index];
   const [selected, setSelected] = useState<boolean[]>(() => rx?.medicines.map(() => true) ?? []);
@@ -142,6 +140,9 @@ function Consultation() {
   const [activeResult, setActiveResult] = useState(0);
   const results = searchAll(query);
   const index = sections.findIndex((s) => s.key === active);
+  const groups: MedicineGroup[] = ["NEW", "CHANGED", "CONTINUE", "STOP"];
+  const activeMedicine = medicines.find((m) => m.id === editingMedicineId) ?? null;
+  const activeMedicines = medicines.filter((m) => !m.stopped);
 
   const filled: Record<SectionKey, boolean> = {
     complaints: !!complaints.trim(),
@@ -172,11 +173,14 @@ function Consultation() {
   // Single entry point for search, sets and frequent chips: add with the doctor's usual pattern, then clear and keep search focused.
   function addNames(names: string[], unlisted = false) {
     const fresh: Medicine[] = [];
+    const seen = new Set(medicines.map((m) => m.name.trim().toLowerCase()));
     names.forEach((raw) => {
       const name = raw.trim();
       if (!name) return;
       const existing = medicines.find((m) => m.name.trim().toLowerCase() === name.toLowerCase());
       if (existing) { highlight(existing.id); return; }
+      if (seen.has(name.toLowerCase())) return;
+      seen.add(name.toLowerCase());
       const p = unlisted ? undefined : usualPattern(DOCTOR_ID, name);
       fresh.push({ id: nextId.current++, name, dose: p?.dose ?? "", frequency: p?.frequency ?? "", duration: p?.duration ?? "", instructions: p?.instructions ?? "", ...(unlisted ? { unlisted: true } : {}) });
     });
@@ -194,13 +198,16 @@ function Consultation() {
   function selectResult(r: SearchResult) { addNames(r.kind === "set" ? r.set.items : [r.item.name]); }
   function pickFrequent(name: string) { addNames([name], !catalog.some((c) => c.name.toLowerCase() === name.toLowerCase()) && !usualPattern(DOCTOR_ID, name)); }
   function repeatMedicines(items: PastMedicine[]) {
-    const added = items.map((item) => ({ ...item, id: nextId.current++ }));
+    const added = items.filter((item) => !medicines.some((m) => m.name.toLowerCase() === item.name.toLowerCase())).map((item) => ({ ...item, previous: { ...item }, id: nextId.current++ }));
     setMedicines((current) => [...current, ...added]);
     setError("");
   }
-  function updateMedicine(id: number, field: keyof Medicine, value: string) {
-    setMedicines((items) => items.map((item) => item.id === id ? { ...item, [field]: value } : item));
-    setError("");
+  function stopPrevious(item: PastMedicine) {
+    setMedicines((current) => {
+      const existing = current.find((m) => m.name.toLowerCase() === item.name.toLowerCase());
+      if (existing) return current.map((m) => m.id === existing.id ? { ...m, previous: { ...item }, stopped: true } : m);
+      return [...current, { ...item, previous: { ...item }, stopped: true, id: nextId.current++ }];
+    });
   }
   function addAllergy() {
     const name = allergyInput.trim();
@@ -227,16 +234,16 @@ function Consultation() {
       requestAnimationFrame(() => searchRef.current?.focus());
       return;
     }
-    const incomplete = medicines.find((item) => !item.name.trim() || !item.dose.trim() || !item.duration.trim());
+    const incomplete = activeMedicines.find((item) => !item.name.trim() || !item.dose.trim() || !item.duration.trim());
     if (incomplete) {
       setActive("medicines");
       setError("Add a dose and duration for each medicine before generating.");
-      requestAnimationFrame(() => document.getElementById(`dose-${incomplete.id}`)?.focus());
+      requestAnimationFrame(() => setEditingMedicineId(incomplete.id));
       return;
     }
     setError("");
-    recordPrescribed(DOCTOR_ID, medicines.map((m) => m.name.trim()));
-    learnPatterns(DOCTOR_ID, medicines);
+    recordPrescribed(DOCTOR_ID, activeMedicines.map((m) => m.name.trim()));
+    learnPatterns(DOCTOR_ID, activeMedicines);
     setPreviewOpen(true);
   }
   function onTabKey(event: React.KeyboardEvent) {
@@ -349,7 +356,7 @@ function Consultation() {
                  <div className="mt-3 flex flex-wrap items-center gap-2"><Button size="sm" variant="outline" onClick={() => setAllergyState("none")}><Check size={15} /> No known drug allergies</Button>{allergyStatus !== "unknown" && <Button size="sm" variant="ghost" className="text-inherit hover:text-inherit" onClick={() => setAllergyState("unknown")}>Mark not recorded</Button>}</div>
                </div>}
              </div>
-            <LastPrescription currentNames={medicines.map((m) => m.name.toLowerCase())} onRepeat={repeatMedicines} />
+            <LastPrescription currentNames={medicines.map((m) => m.name.toLowerCase())} onRepeat={repeatMedicines} onStop={stopPrevious} />
             <div className="relative z-10" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSearchOpen(false); }}>
                <div className="flex items-center gap-2 rounded-md border border-section-accent bg-card p-1.5 shadow-sm focus-within:ring-2 focus-within:ring-section-accent/25">
                  <Search className="ml-2 shrink-0 text-section-ink" size={20} aria-hidden="true" />
@@ -371,18 +378,14 @@ function Consultation() {
               </div>}
             </div>
              <FrequentMedicines doctorId={DOCTOR_ID} currentNames={medicines.map((m) => m.name.trim().toLowerCase())} onPick={pickFrequent} />
-             <h3 className="mt-6 mb-1 text-xs font-bold uppercase tracking-wider text-section-ink">Current prescription <span className="font-medium normal-case tracking-normal text-muted-foreground">· today</span></h3>
-             {medicines.length === 0 ? <div className="mt-2 flex min-h-44 flex-col items-center justify-center rounded-md border border-dashed border-section-border bg-card px-4 py-8 text-center"><span className="mb-3 flex size-10 items-center justify-center rounded-md bg-section-soft text-section-ink"><Plus size={21} /></span><h3 className="font-semibold">Start prescription</h3><p className="mt-1 max-w-xs text-sm text-muted-foreground">Search for a medicine above or enter one manually.</p></div> : <div className="mt-5 space-y-3">
-              {medicines.map((medicine, i) => <div key={medicine.id} id={`med-${medicine.id}`} className={cn("rounded-md border border-border bg-card p-4 transition-shadow duration-500 sm:p-5", highlightId === medicine.id && "ring-2 ring-section-accent")}>
-                 <div className="mb-4 flex items-start justify-between gap-3"><div className="flex min-w-0 flex-1 items-start gap-3"><span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-section-soft text-xs font-bold text-section-ink">{String(i + 1).padStart(2, "0")}</span><div className="min-w-0 flex-1">{editingMedicineId === medicine.id ? <Input autoFocus aria-label="Medicine name" value={medicine.name} onChange={(event) => updateMedicine(medicine.id, "name", event.target.value)} onBlur={() => setEditingMedicineId(null)} onKeyDown={(event) => { if (event.key === "Enter") setEditingMedicineId(null); }} /> : <h3 className="break-words font-semibold leading-7">{medicine.name}{medicine.unlisted && <span className="ml-2 align-middle rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Unlisted</span>}</h3>}</div></div><div className="flex shrink-0 items-center"><Button variant="ghost" size="icon" className="text-muted-foreground" aria-label={`Edit ${medicine.name} name`} title="Edit medicine name" onMouseDown={(event) => event.preventDefault()} onClick={() => setEditingMedicineId(medicine.id)}><Pencil size={16} /></Button><Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" aria-label={`Remove ${medicine.name}`} title="Remove medicine" onClick={() => setMedicines((items) => items.filter((item) => item.id !== medicine.id))}><Trash2 size={16} /></Button></div></div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <label className="block min-w-0 text-xs font-semibold text-muted-foreground">Dose<Input id={`dose-${medicine.id}`} value={medicine.dose} onChange={(event) => updateMedicine(medicine.id, "dose", event.target.value)} placeholder="e.g. 1 tablet" className="mt-1.5 h-10 text-foreground" /></label>
-                  <div className="min-w-0 text-xs font-semibold text-muted-foreground"><label htmlFor={`frequency-${medicine.id}`}>Frequency</label><Select value={medicine.frequency} onValueChange={(value) => updateMedicine(medicine.id, "frequency", value)}><SelectTrigger id={`frequency-${medicine.id}`} className="mt-1.5 h-10 font-normal text-foreground"><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{frequencyOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select></div>
-                  <label className="block min-w-0 text-xs font-semibold text-muted-foreground">Duration<Input value={medicine.duration} onChange={(event) => updateMedicine(medicine.id, "duration", event.target.value)} placeholder="e.g. 5 days" className="mt-1.5 h-10 text-foreground" /></label>
-                  <label className="col-span-2 block min-w-0 text-xs font-semibold text-muted-foreground sm:col-span-3">Instructions <span className="font-normal">(optional)</span><Input value={medicine.instructions} onChange={(event) => updateMedicine(medicine.id, "instructions", event.target.value)} placeholder="e.g. After food" className="mt-1.5 h-10 text-foreground" /></label>
-                </div>
-              </div>)}
-            </div>}
+             <div className="mt-6 flex items-center justify-between gap-2"><h3 className="text-xs font-bold uppercase tracking-wider text-section-ink">Current prescription <span className="font-medium normal-case tracking-normal text-muted-foreground">· today</span></h3><Button size="sm" variant="ghost" className="h-8 text-section-ink" onClick={() => searchRef.current?.focus()}><Plus size={15} /> Add medicine</Button></div>
+             {medicines.length === 0 ? <div className="mt-2 flex min-h-36 flex-col items-center justify-center rounded-md border border-dashed border-section-border bg-card px-4 py-6 text-center"><span className="mb-2 flex size-9 items-center justify-center rounded-md bg-section-soft text-section-ink"><Plus size={20} /></span><h3 className="font-semibold">Start prescription</h3><p className="mt-1 text-sm text-muted-foreground">Search for a medicine above or enter one manually.</p></div> : <div className="mt-3 space-y-4">
+               {groups.map((group) => {
+                 const items = medicines.filter((m) => groupFor(m) === group);
+                 if (!items.length) return null;
+                 return <section key={group} aria-label={`${group} medicines`}><div className="flex items-center gap-3 pb-1.5"><h4 className={cn("text-[11px] font-bold tracking-wider", group === "STOP" ? "text-destructive" : "text-section-ink")}>{group}</h4><span className="h-px flex-1 bg-section-border" /></div><div className="divide-y divide-border overflow-hidden rounded-md border border-section-border bg-card">{items.map((medicine) => <Button key={medicine.id} id={`med-${medicine.id}`} type="button" variant="ghost" onClick={() => setEditingMedicineId(medicine.id)} className={cn("flex h-auto min-h-16 w-full min-w-0 items-center justify-between gap-3 rounded-none px-3 py-2.5 text-left font-normal hover:bg-section-soft sm:px-4", highlightId === medicine.id && "bg-section-soft ring-2 ring-inset ring-section-accent", group === "STOP" && "border-l-2 border-destructive")}><span className="min-w-0 flex-1"><span className="block break-words text-sm font-semibold text-foreground">{medicine.name}{medicine.unlisted && <span className="ml-2 text-[11px] font-normal text-muted-foreground">· Unlisted</span>}</span><span className={cn("mt-0.5 block whitespace-normal text-xs leading-5 text-muted-foreground", group === "STOP" && "font-semibold text-destructive")}>{group === "STOP" ? "Stop" : [shortDose(medicine.dose) || "Dose needed", shortFrequency(medicine.frequency) || "When needed", medicine.instructions, medicine.duration || "Duration needed", medicine.sos ? "SOS" : ""].filter(Boolean).join(" · ")}</span></span>{group !== "STOP" && <span className="shrink-0 whitespace-nowrap text-right text-xs font-semibold text-foreground">{quantityFor(medicine)}</span>}<ChevronRight size={15} className="shrink-0 text-muted-foreground" aria-hidden="true" /></Button>)}</div></section>;
+               })}
+             </div>}
           </section>}
 
           {active === "followup" && <SectionBlock title="Follow-up" hint="When should the patient return?">
@@ -399,6 +402,7 @@ function Consultation() {
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur-sm print:hidden"><div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:px-4"><div className="hidden text-sm text-muted-foreground sm:block">{medicines.length ? `${medicines.length} ${medicines.length === 1 ? "medicine" : "medicines"} added` : "Ready to prescribe"} <span className="mx-2 text-border">·</span> Other sections are optional</div>{error && <p className="text-xs font-medium text-destructive sm:mr-auto sm:pl-4" role="alert">{error}</p>}<Button size="lg" className="w-full sm:w-auto" onClick={generate}><FileText size={17} /> Generate Prescription</Button></div></div>
 
+      <MedicineEditSheet medicine={activeMedicine} onClose={() => setEditingMedicineId(null)} onSave={(updated) => { setMedicines((items) => items.map((item) => item.id === updated.id ? updated : item)); setError(""); }} onRemove={(id) => setMedicines((items) => items.filter((item) => item.id !== id))} />
       {previewOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-3 sm:p-6 print:static print:block print:bg-background print:p-0" role="dialog" aria-modal="true" aria-label="Prescription preview" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewOpen(false); }}><div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-md bg-card shadow-2xl print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:shadow-none"><div className="flex items-center justify-between gap-2 border-b border-border px-5 py-4 print:hidden"><div><h2 className="font-bold">Prescription ready</h2><p className="text-xs text-muted-foreground">Review and print your prescription</p></div><Button variant="ghost" size="icon" aria-label="Close preview" onClick={() => setPreviewOpen(false)}><X size={19} /></Button></div><div className="overflow-y-auto px-5 py-6 sm:px-10 sm:py-9 print:overflow-visible print:px-10 print:py-8"><div className="flex items-start justify-between gap-4 border-b-2 border-primary pb-5"><div><div className="flex items-center gap-2 text-xl font-bold text-primary"><Activity size={22} /> Chikitra</div><p className="mt-1 text-xs text-muted-foreground">Doctor consultation prescription</p></div><div className="text-right text-xs text-muted-foreground"><p>Dr. Ankeeta Roy</p><p>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p></div></div><div className="grid grid-cols-2 gap-4 border-b border-border py-5 text-sm"><div><p className="text-xs text-muted-foreground">PATIENT</p><p className="mt-1 font-semibold">Ankeeta Roy</p><p className="text-muted-foreground">26 years · Female</p></div><div className="text-right"><p className="text-xs text-muted-foreground">PATIENT ID</p><p className="mt-1 font-medium">P6231C</p></div></div>
         {(complaints.trim() || vitalsText || examination.trim() || investigations.trim()) && <div className="space-y-1.5 border-b border-border py-4 text-sm">
           {complaints.trim() && <p><span className="text-muted-foreground">Complaints: </span>{complaints}</p>}
@@ -406,7 +410,7 @@ function Consultation() {
           {examination.trim() && <p><span className="text-muted-foreground">Examination: </span>{examination}</p>}
           {investigations.trim() && <p><span className="text-muted-foreground">Investigations: </span>{investigations}</p>}
         </div>}
-        <div className="py-6"><h3 className="mb-5 text-xl font-semibold text-primary">℞ <span className="ml-1 text-base text-foreground">Medicines</span></h3><div className="space-y-5">{medicines.map((medicine, i) => <div key={medicine.id} className="flex gap-4 border-b border-border pb-4 text-sm"><span className="text-muted-foreground">{String(i + 1).padStart(2, "0")}</span><div><p className="font-semibold">{medicine.name}</p><p className="mt-1 text-muted-foreground">{medicine.dose} · {medicine.frequency} · {medicine.duration}</p>{medicine.instructions && <p className="mt-1 text-muted-foreground">{medicine.instructions}</p>}</div></div>)}</div></div>
+        <div className="py-6"><h3 className="mb-5 text-xl font-semibold text-primary">℞ <span className="ml-1 text-base text-foreground">Medicines</span></h3><div className="space-y-5">{medicines.map((medicine, i) => <div key={medicine.id} className="flex gap-4 border-b border-border pb-4 text-sm"><span className="text-muted-foreground">{String(i + 1).padStart(2, "0")}</span><div><p className="font-semibold">{medicine.name}</p><p className="mt-1 text-muted-foreground">{medicine.stopped ? "Stop" : `${medicine.dose} · ${medicine.frequency} · ${medicine.duration}${medicine.sos ? " · SOS" : ""}`}</p>{!medicine.stopped && medicine.instructions && <p className="mt-1 text-muted-foreground">{medicine.instructions}</p>}{!medicine.stopped && quantityFor(medicine) !== "—" && <p className="mt-1 text-muted-foreground">Quantity: {quantityFor(medicine)}</p>}</div></div>)}</div></div>
         {filled.followup && <div className="text-sm"><span className="font-semibold">Follow-up: </span>{[followup && `After ${followup}`, followupNote.trim()].filter(Boolean).join(" — ")}</div>}
         <div className="mt-16 border-t border-border pt-5 text-right text-xs text-muted-foreground">Doctor's signature</div></div><div className="flex justify-end gap-2 border-t border-border px-5 py-4 print:hidden"><Button variant="outline" onClick={() => setPreviewOpen(false)}>Edit prescription</Button><Button onClick={() => window.print()}><Printer size={16} /> Print / Save PDF</Button></div></div></div>}
     </div>
