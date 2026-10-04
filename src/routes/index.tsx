@@ -180,7 +180,7 @@ function Consultation() {
     document.getElementById(`tab-${active}`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [active]);
 
-  function go(key: SectionKey) { setActive(key); setError(""); }
+  function go(key: SectionKey) { setActive(key); setAllergyEditorOpen(false); setError(""); }
   function highlight(id: number) {
     setHighlightId(id);
     document.getElementById(`med-${id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
@@ -231,6 +231,7 @@ function Consultation() {
     setAllergies((items) => [...items, name]);
     setAllergyStatus("known");
     setAllergyInput("");
+    setAllergyEditorOpen(false);
   }
   function removeAllergy(indexToRemove: number) {
     const remaining = allergies.filter((_, index) => index !== indexToRemove);
