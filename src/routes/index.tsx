@@ -355,7 +355,7 @@ function Consultation() {
 
           {active === "investigations" && <div className="space-y-5">
             <h2 className="border-l-4 border-section-accent pl-3 text-2xl font-bold text-section-ink">Investigations</h2>
-            <TestsAdvice tests={advisedTests} setTests={setAdvisedTests} advice={invAdvice} setAdvice={setInvAdvice} />
+            <TestsAdvice doctorId={DOCTOR_ID} tests={advisedTests} setTests={setAdvisedTests} advice={invAdvice} setAdvice={setInvAdvice} />
             <p className="text-xs text-muted-foreground">Have a report already? Record it in <button type="button" className="font-medium text-primary underline-offset-2 hover:underline" onClick={() => go("visit")}>Visit → Investigation Results</button>.</p>
           </div>}
 
