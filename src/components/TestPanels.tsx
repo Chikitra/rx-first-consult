@@ -90,7 +90,7 @@ export function SavedPanels({ doctorId, catalog, current, onAdd }: { doctorId: s
   );
 }
 
-function PanelEditor({ panel, catalog, onSave, onCancel, onDelete }: { panel: TestPanel; catalog: string[]; onSave: (p: TestPanel) => void; onCancel: () => void; onDelete?: () => void }) {
+function PanelEditor({ panel, catalog, onSave, onCancel, onDelete }: { panel: TestPanel; catalog: string[]; onSave: (p: TestPanel) => void; onCancel: () => void; onDelete?: (() => void) | undefined }) {
   const [name, setName] = useState(panel.name);
   const [tests, setTests] = useState(panel.tests);
   const [q, setQ] = useState("");
