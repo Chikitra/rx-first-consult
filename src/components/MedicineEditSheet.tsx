@@ -34,7 +34,7 @@ const frequencies = [{ label: "OD", value: "Once daily" }, { label: "BD", value:
 const foods = ["Before food", "After food", "With food", "Empty stomach", "No instruction"];
 const durations = ["1 day", "3 days", "5 days", "7 days", "10 days"];
 function ChipField({ label, options, value, onChange }: { label: string; options: { label: string; value: string }[]; value: string; onChange: (v: string) => void }) {
-  const custom = !!value && !options.some((o) => o.value === value);
+  const custom = !!value && !options.some((o) => normalize(o.value) === normalize(value));
   const [editing, setEditing] = useState(false);
   return <fieldset className="space-y-2"><legend className="text-xs font-bold uppercase text-muted-foreground">{label}</legend><div className="flex flex-wrap gap-1.5">{options.map((o) => <Button key={o.label} type="button" variant="outline" size="sm" aria-pressed={value === o.value && !editing} className={cn("h-8 rounded-md px-2.5 text-xs", value === o.value && !editing && "border-section-accent bg-section-soft font-semibold text-section-ink")} onClick={() => { onChange(o.value); setEditing(false); }}>{o.label}</Button>)}<Button type="button" variant="outline" size="sm" aria-pressed={editing || custom} className={cn("h-8 rounded-md px-2.5 text-xs", (editing || custom) && "border-section-accent bg-section-soft text-section-ink")} onClick={() => setEditing(true)}>Custom</Button></div>{(editing || custom) && <Input autoFocus aria-label={`Custom ${label.toLowerCase()}`} className="h-9" value={value} onChange={(e) => onChange(e.target.value)} placeholder={`Enter ${label.toLowerCase()}`} />}</fieldset>;
 }
