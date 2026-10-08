@@ -1,6 +1,6 @@
 export const administrationSlots = ["morning", "afternoon", "evening", "night"] as const;
 export type AdministrationTime = typeof administrationSlots[number];
-export type DosingSchedule = { frequency: string; administrationTimes?: AdministrationTime[]; sos?: boolean };
+export type DosingSchedule = { frequency: string; administrationTimes?: AdministrationTime[] | undefined; sos?: boolean | undefined };
 
 const frequencies = ["Once daily", "Twice daily", "Three times daily", "Four times daily"];
 const counts: Record<string, number> = { "Once daily": 1, "Twice daily": 2, "Three times daily": 3, "Four times daily": 4, "At bedtime": 1, OD: 1, BD: 2, TDS: 3, QID: 4, HS: 1 };
