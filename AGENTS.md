@@ -13,6 +13,6 @@
 - Keep clinical context optional and secondary to medicines; the consultation must never gate prescription generation on documentation.
 - Keep allergy status as three explicit patient-scoped browser states shared between Visit and Medicines until patient services are connected; unrecorded must never be inferred as no known allergies, and an established answer should not be asked again.
 - Define consultation-section accent, ink, tint, and border colors by section in global CSS so tabs and active panels share one semantic identity without altering prescription actions.
-- Keep medicine rows grouped by inferred comparison with the relevant repeated prescription, with chip-first editing in a sheet; calculate quantity only for parseable finite regimens, otherwise require an explicit override, to avoid unsafe inferred quantities.
+- Keep medicine rows grouped by inferred comparison with the relevant repeated prescription; selecting a single medicine opens the compact morning–afternoon–night + days sheet before it joins the prescription (sets add directly), and the same sheet edits rows; calculate quantity only for parseable finite regimens, never inventing one, to avoid unsafe inferred quantities.
 - Investigations split: results in Visit, tests in Investigations → Tests & Advice.
 - Store explicit administration slots with medicine patterns; use shared schedule helpers for wording, shorthand, quantity, and repeat comparison so those outputs cannot drift. Legacy and unparseable custom frequencies must not invent timings.
