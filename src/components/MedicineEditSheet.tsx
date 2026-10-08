@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { administrationSlots, administrationsPerDay, doseAmount, formatAmount, frequencyDisplay, frequencyForTimes, selectedTimes, slotDosesFor, tableSlots, type SlotDoses } from "@/lib/dosing-schedule";
 import type { Pattern } from "@/lib/medicines";
 
-export type Medicine = Pattern & { id: number; name: string; unlisted?: boolean; previous?: Pattern & { name: string }; stopped?: boolean; quantityOverride?: string };
+export type Medicine = Pattern & { id: number; name: string; unlisted?: boolean; previous?: Pattern & { name: string }; stopped?: boolean; quantityOverride?: string; noLearn?: boolean | undefined };
 export type MedicineGroup = "NEW" | "CHANGED" | "CONTINUE" | "STOP";
 const normalize = (value: string) => value.trim().toLowerCase().replace(/\btablet(s)?\b/g, "tab$1").replace(/\bcapsule(s)?\b/g, "cap$1");
 const slotKey = (d: SlotDoses) => administrationSlots.map((s) => d[s] ?? 0).join("-");
@@ -44,15 +44,17 @@ const slotLabel = { morning: "Morning", afternoon: "Afternoon", night: "Night" }
 const next = (n: number) => (n >= 2 ? 0 : n >= 1 ? 2 : 1);
 
 /** Compact dosing: morning–afternoon–night table + days. Used for adding and editing. */
-export function MedicineEditSheet({ medicine, isNew, onSave, onClose, onRemove, onClosed }: { medicine: Medicine | null; isNew: boolean; onSave: (m: Medicine) => void; onClose: () => void; onRemove: (id: number) => void; onClosed?: () => void }) {
+export function MedicineEditSheet({ medicine, isNew, showSave = false, onSave, onClose, onRemove, onClosed }: { medicine: Medicine | null; isNew: boolean; showSave?: boolean; onSave: (m: Medicine, saveForFuture: boolean) => void; onClose: () => void; onRemove: (id: number) => void; onClosed?: () => void }) {
   const [doses, setDoses] = useState<SlotDoses>({});
   const [duration, setDuration] = useState("");
   const [custom, setCustom] = useState(false);
+  const [saveForFuture, setSaveForFuture] = useState(true);
   useEffect(() => {
     if (!medicine) return;
     setDoses({ ...(slotDosesFor(medicine) ?? {}) });
     setDuration(medicine.duration);
     setCustom(!!medicine.duration && medicine.duration !== "Continue" && !dayOptions.some((d) => `${d} days` === medicine.duration));
+    setSaveForFuture(true);
   }, [medicine]);
   if (!medicine) return <Sheet open={false} />;
   const times = administrationSlots.filter((s) => (doses[s] ?? 0) > 0);
@@ -63,12 +65,14 @@ export function MedicineEditSheet({ medicine, isNew, onSave, onClose, onRemove, 
     frequency: frequencyForTimes(times, medicine.frequency === "At bedtime" || medicine.frequency === "HS"),
     duration,
     sos: false,
+    // Opted-out new medicines are prescribed today but excluded from pattern learning and usage counts.
+    noLearn: isNew && showSave && !saveForFuture ? true : undefined,
     // A plain "1 tablet" dose is now carried by the table; keep descriptive doses (e.g. "1 sachet in 1 L water").
     dose: /^(½|1\/2|0\.5|\d+(\.\d+)?)\s*(tablet|tab|capsule|cap)s?$/i.test(medicine.dose.trim()) ? "" : medicine.dose,
   };
   const ready = times.length > 0 && !!duration.trim() && !!medicine.name.trim();
   const quantity = quantityFor(result);
-  const save = () => { if (ready) { onSave(result); onClose(); } };
+  const save = () => { if (ready) { onSave(result, saveForFuture); onClose(); } };
   const customDays = duration.match(/^(\d+)/)?.[1] ?? "";
   return <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}><SheetContent side="bottom" onCloseAutoFocus={(e) => { if (onClosed) { e.preventDefault(); onClosed(); } }} onKeyDown={(e) => { if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "BUTTON") { e.preventDefault(); save(); } }} className="consultation-theme mx-auto flex max-h-[90dvh] w-full max-w-md flex-col rounded-t-md border-section-border bg-card p-0" data-section="medicines">
     <SheetHeader className="shrink-0 border-b border-border px-5 py-4 text-left"><SheetTitle className="pr-6">{medicine.name}</SheetTitle><SheetDescription>{medicine.unlisted ? "Unlisted medicine · " : ""}{isNew ? "How often and for how many days" : medicine.previous ? "Previously prescribed · changes are grouped automatically" : "Edit dosing"}</SheetDescription></SheetHeader>
@@ -85,9 +89,13 @@ export function MedicineEditSheet({ medicine, isNew, onSave, onClose, onRemove, 
         {custom && <label className="flex items-center gap-2 text-sm"><Input autoFocus aria-label="Number of days" inputMode="numeric" className="h-10 w-20" value={customDays} onChange={(e) => { const n = e.target.value.replace(/\D/g, ""); setDuration(n ? `${n} day${n === "1" ? "" : "s"}` : ""); }} /> days</label>}
       </fieldset>
       <p className="text-xs text-muted-foreground">Quantity: <span className="font-semibold text-foreground">{quantity === "—" ? duration === "Continue" ? "not calculated (continuing)" : "—" : quantity}</span>{medicine.instructions ? ` · ${medicine.instructions}` : ""}</p>
+      {isNew && showSave && <label className="flex cursor-pointer items-center gap-2.5 rounded-md border border-section-border bg-section-soft/60 px-3 py-2.5">
+        <input type="checkbox" className="size-4 shrink-0 accent-[var(--section-accent)]" checked={saveForFuture} onChange={(e) => setSaveForFuture(e.target.checked)} />
+        <span className="text-sm font-medium text-foreground">Save this for future use <span className="block text-xs font-normal text-muted-foreground">Remembers how you usually prescribe {medicine.name}</span></span>
+      </label>}
     </div>
     <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border bg-card px-5 py-4">
-      <div className="flex gap-1">{!isNew && <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => { onRemove(medicine.id); onClose(); }}>Remove</Button>}{!isNew && medicine.previous && <Button type="button" variant="ghost" size="sm" onClick={() => { onSave({ ...medicine, stopped: !medicine.stopped }); onClose(); }}>{medicine.stopped ? "Resume" : "Stop"}</Button>}</div>
+      <div className="flex gap-1">{!isNew && <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => { onRemove(medicine.id); onClose(); }}>Remove</Button>}{!isNew && medicine.previous && <Button type="button" variant="ghost" size="sm" onClick={() => { onSave({ ...medicine, stopped: !medicine.stopped }, false); onClose(); }}>{medicine.stopped ? "Resume" : "Stop"}</Button>}</div>
       <Button type="button" className="min-w-28" onClick={save} disabled={!ready}>{isNew ? "Add" : "Save"}</Button>
     </div>
   </SheetContent></Sheet>;

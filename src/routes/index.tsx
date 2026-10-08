@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { FrequentMedicines, recordPrescribed } from "@/components/FrequentMedicines";
+import { FrequentMedicines, recordPrescribed, recordSaved } from "@/components/FrequentMedicines";
 import { catalog, learnPatterns, searchAll, usualPattern, type SearchResult } from "@/lib/medicines";
 import { MedicineEditSheet, groupFor, hasDose, quantityFor, shortDose, type Medicine, type MedicineGroup } from "@/components/MedicineEditSheet";
 import { frequencyDisplay } from "@/lib/dosing-schedule";
@@ -131,8 +131,8 @@ function Consultation() {
   const [followupNote, setFollowupNote] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [sheet, setSheet] = useState<{ medicine: Medicine; isNew: boolean } | null>(null);
-  const setEditingMedicineId = (id: number | null) => setSheet(() => { const m = medicines.find((x) => x.id === id); return m ? { medicine: m, isNew: false } : null; });
+  const [sheet, setSheet] = useState<{ medicine: Medicine; isNew: boolean; showSave: boolean } | null>(null);
+  const setEditingMedicineId = (id: number | null) => setSheet(() => { const m = medicines.find((x) => x.id === id); return m ? { medicine: m, isNew: false, showSave: false } : null; });
   const [allergyStatus, setAllergyStatus] = useState<AllergyStatus>("unknown");
   const [allergies, setAllergies] = useState<string[]>([]);
   const [allergyEditorOpen, setAllergyEditorOpen] = useState(false);
@@ -223,9 +223,10 @@ function Consultation() {
     setQuery("");
     setActiveResult(0);
     setError("");
-    if (existing) { setSheet({ medicine: existing, isNew: false }); return; }
-    const p = unlisted ? undefined : usualPattern(DOCTOR_ID, name);
-    setSheet({ isNew: true, medicine: { id: nextId.current++, name, dose: p?.dose ?? "", frequency: p?.frequency ?? "", duration: p?.duration ?? "", instructions: p?.instructions ?? "", administrationTimes: p?.administrationTimes ? [...p.administrationTimes] : undefined, slotDoses: p?.slotDoses ? { ...p.slotDoses } : undefined, ...(unlisted ? { unlisted: true } : {}) } });
+    if (existing) { setSheet({ medicine: existing, isNew: false, showSave: false }); return; }
+    // Saved patterns prefill even unlisted medicines; the save checkbox appears only for medicines not yet saved.
+    const p = usualPattern(DOCTOR_ID, name);
+    setSheet({ isNew: true, showSave: !p, medicine: { id: nextId.current++, name, dose: p?.dose ?? "", frequency: p?.frequency ?? "", duration: p?.duration ?? "", instructions: p?.instructions ?? "", administrationTimes: p?.administrationTimes ? [...p.administrationTimes] : undefined, slotDoses: p?.slotDoses ? { ...p.slotDoses } : undefined, ...(unlisted ? { unlisted: true } : {}) } });
   }
   function addFromSearch(name: string, unlisted = false) { openDosing(name, unlisted); }
   function selectResult(r: SearchResult) { if (r.kind === "set") addNames(r.set.items); else openDosing(r.item.name); }
@@ -276,8 +277,9 @@ function Consultation() {
       return;
     }
     setError("");
-    recordPrescribed(DOCTOR_ID, activeMedicines.map((m) => m.name.trim()));
-    learnPatterns(DOCTOR_ID, activeMedicines);
+    const prescribed = activeMedicines.filter((m) => !m.noLearn);
+    recordPrescribed(DOCTOR_ID, prescribed.map((m) => m.name.trim()));
+    learnPatterns(DOCTOR_ID, prescribed);
     setPreviewOpen(true);
   }
   function onTabKey(event: React.KeyboardEvent) {
@@ -425,7 +427,7 @@ function Consultation() {
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur-sm print:hidden"><div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:px-4"><div className="hidden text-sm text-muted-foreground sm:block">{medicines.length ? `${medicines.length} ${medicines.length === 1 ? "medicine" : "medicines"} added` : "Ready to prescribe"} <span className="mx-2 text-border">·</span> Other sections are optional</div>{error && <p className="text-xs font-medium text-destructive sm:mr-auto sm:pl-4" role="alert">{error}</p>}<Button size="lg" className="w-full sm:w-auto" onClick={generate}><FileText size={17} /> Generate Prescription</Button></div></div>
 
-      <MedicineEditSheet medicine={sheet?.medicine ?? null} isNew={!!sheet?.isNew} onClose={() => setSheet(null)} onClosed={() => searchRef.current?.focus()} onSave={(updated) => { setMedicines((items) => items.some((item) => item.id === updated.id) ? items.map((item) => item.id === updated.id ? updated : item) : [...items, updated]); setError(""); requestAnimationFrame(() => highlight(updated.id)); }} onRemove={(id) => setMedicines((items) => items.filter((item) => item.id !== id))} />
+      <MedicineEditSheet medicine={sheet?.medicine ?? null} isNew={!!sheet?.isNew} showSave={!!sheet?.showSave} onClose={() => setSheet(null)} onClosed={() => searchRef.current?.focus()} onSave={(updated, saveForFuture) => { setMedicines((items) => items.some((item) => item.id === updated.id) ? items.map((item) => item.id === updated.id ? updated : item) : [...items, updated]); if (sheet?.isNew && sheet.showSave && saveForFuture) { learnPatterns(DOCTOR_ID, [updated]); recordSaved(DOCTOR_ID, updated.name.trim()); } setError(""); requestAnimationFrame(() => highlight(updated.id)); }} onRemove={(id) => setMedicines((items) => items.filter((item) => item.id !== id))} />
       {previewOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-3 sm:p-6 print:static print:block print:bg-background print:p-0" role="dialog" aria-modal="true" aria-label="Prescription preview" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewOpen(false); }}><div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-md bg-card shadow-2xl print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:shadow-none"><div className="flex items-center justify-between gap-2 border-b border-border px-5 py-4 print:hidden"><div><h2 className="font-bold">Prescription ready</h2><p className="text-xs text-muted-foreground">Review and print your prescription</p></div><Button variant="ghost" size="icon" aria-label="Close preview" onClick={() => setPreviewOpen(false)}><X size={19} /></Button></div><div className="overflow-y-auto px-5 py-6 sm:px-10 sm:py-9 print:overflow-visible print:px-10 print:py-8"><div className="flex items-start justify-between gap-4 border-b-2 border-primary pb-5"><div><div className="flex items-center gap-2 text-xl font-bold text-primary"><Activity size={22} /> Chikitra</div><p className="mt-1 text-xs text-muted-foreground">Doctor consultation prescription</p></div><div className="text-right text-xs text-muted-foreground"><p>Dr. Ankeeta Roy</p><p>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p></div></div><div className="grid grid-cols-2 gap-4 border-b border-border py-5 text-sm"><div><p className="text-xs text-muted-foreground">PATIENT</p><p className="mt-1 font-semibold">Ankeeta Roy</p><p className="text-muted-foreground">26 years · Female</p></div><div className="text-right"><p className="text-xs text-muted-foreground">PATIENT ID</p><p className="mt-1 font-medium">P6231C</p></div></div>
         {(complaints.trim() || vitalsText || examination.trim() || invResults.some((r) => r.test.trim() || r.values.trim())) && <div className="space-y-1.5 border-b border-border py-4 text-sm">
           {complaints.trim() && <p><span className="text-muted-foreground">Complaints: </span>{complaints}</p>}

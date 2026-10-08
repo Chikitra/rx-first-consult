@@ -32,6 +32,13 @@ export function recordPrescribed(doctorId: string, names: string[]) {
   localStorage.setItem(storageKey(doctorId), JSON.stringify(prefs));
   window.dispatchEvent(new Event("chikitra-frequent"));
 }
+/** Makes a saved medicine eligible for the chips without faking heavy usage; ranking stays usage-based. */
+export function recordSaved(doctorId: string, name: string) {
+  const prefs = loadPrefs(doctorId);
+  prefs.counts[name] = Math.max(prefs.counts[name] ?? 0, MIN_USES);
+  localStorage.setItem(storageKey(doctorId), JSON.stringify(prefs));
+  window.dispatchEvent(new Event("chikitra-frequent"));
+}
 
 export function chipLabel(name: string) { return name.replace(/\s+(tablet|capsule|sachet|syrup)s?$/i, ""); }
 
