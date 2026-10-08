@@ -3,5 +3,5 @@
 - [x] Ask unknown allergy status in Visit, retain three distinct states across visits in this browser, and display status in Medicines.
 - [x] Add schedule-based frequency wording and shorthand to editing, medicine rows, and prescription print.
 - [x] Verify timing edits, quantities, repeat comparison, and learned schedule reuse.
-- [ ] Add default-on "Save this for future use" to the dosing sheet for medicines not yet saved; opted-out medicines skip learning and usage counts.
-- [ ] Saving learns the full pattern, pre-fills next time, and makes the medicine eligible for frequently-used chips; verify in browser.
+- [x] Add default-on "Save this for future use" to the dosing sheet for medicines not yet saved; opted-out medicines skip learning and usage counts.
+- [x] Saving learns the full pattern, pre-fills next time, and makes the medicine eligible for frequently-used chips; verify in browser.
