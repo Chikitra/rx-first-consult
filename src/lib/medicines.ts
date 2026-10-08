@@ -1,6 +1,7 @@
+import type { DosingSchedule } from "@/lib/dosing-schedule";
 // Demo medicine database and doctor prescribing patterns — replace with real services when connected.
 export type CatalogItem = { name: string; brand: string; strength: string; composition: string; form: string };
-export type Pattern = { dose: string; frequency: string; duration: string; instructions: string };
+export type Pattern = DosingSchedule & { dose: string; duration: string; instructions: string };
 export type MedicineSet = { name: string; items: string[] };
 
 const c = (name: string, brand: string, strength: string, composition: string, form: string): CatalogItem => ({ name, brand, strength, composition, form });
@@ -51,7 +52,7 @@ export function usualPattern(doctorId: string, name: string): Pattern | undefine
 }
 export function learnPatterns(doctorId: string, meds: ({ name: string } & Pattern)[]) {
   const all = loadPatterns(doctorId);
-  meds.forEach((m) => { if (m.dose.trim() && m.frequency && m.duration.trim()) all[m.name.trim()] = { dose: m.dose, frequency: m.frequency, duration: m.duration, instructions: m.instructions }; });
+  meds.forEach((m) => { if (m.dose.trim() && m.frequency && m.duration.trim()) all[m.name.trim()] = { dose: m.dose, frequency: m.frequency, duration: m.duration, instructions: m.instructions, administrationTimes: m.administrationTimes ? [...m.administrationTimes] : undefined, sos: m.sos }; });
   localStorage.setItem(key(doctorId), JSON.stringify(all));
 }
 
