@@ -41,7 +41,7 @@ export function shortDose(value: string) { return value.replace(/\btablet(s)?\b/
 
 const dayOptions = [3, 5, 7, 10, 14];
 const slotLabel = { morning: "Morning", afternoon: "Afternoon", night: "Night" } as const;
-const next = (n: number) => (n >= 2 ? 0 : n < 1 ? (n === 0 ? 1 : 1) : n + 1);
+const next = (n: number) => (n >= 2 ? 0 : n >= 1 ? 2 : 1);
 
 /** Compact dosing: morning–afternoon–night table + days. Used for adding and editing. */
 export function MedicineEditSheet({ medicine, isNew, onSave, onClose, onRemove, onClosed }: { medicine: Medicine | null; isNew: boolean; onSave: (m: Medicine) => void; onClose: () => void; onRemove: (id: number) => void; onClosed?: () => void }) {
@@ -63,10 +63,9 @@ export function MedicineEditSheet({ medicine, isNew, onSave, onClose, onRemove, 
     frequency: frequencyForTimes(times, medicine.frequency === "At bedtime" || medicine.frequency === "HS"),
     duration,
     sos: false,
-    // A free-text dose would contradict the table; the table now carries the amount.
-    dose: medicine.slotDoses || !medicine.dose ? "" : medicine.dose,
+    // A plain "1 tablet" dose is now carried by the table; keep descriptive doses (e.g. "1 sachet in 1 L water").
+    dose: /^(½|1\/2|0\.5|\d+(\.\d+)?)\s*(tablet|tab|capsule|cap)s?$/i.test(medicine.dose.trim()) ? "" : medicine.dose,
   };
-  if (!medicine.slotDoses && doseAmount(medicine.dose) !== undefined) result.dose = "";
   const ready = times.length > 0 && !!duration.trim() && !!medicine.name.trim();
   const quantity = quantityFor(result);
   const save = () => { if (ready) { onSave(result); onClose(); } };
