@@ -52,7 +52,7 @@ export function usualPattern(doctorId: string, name: string): Pattern | undefine
 }
 export function learnPatterns(doctorId: string, meds: ({ name: string } & Pattern)[]) {
   const all = loadPatterns(doctorId);
-  meds.forEach((m) => { if (m.dose.trim() && m.frequency && m.duration.trim()) all[m.name.trim()] = { dose: m.dose, frequency: m.frequency, duration: m.duration, instructions: m.instructions, administrationTimes: m.administrationTimes ? [...m.administrationTimes] : undefined, sos: m.sos }; });
+  meds.forEach((m) => { if ((m.dose.trim() || m.slotDoses) && m.frequency && m.duration.trim()) all[m.name.trim()] = { dose: m.dose, frequency: m.frequency, duration: m.duration, instructions: m.instructions, administrationTimes: m.administrationTimes ? [...m.administrationTimes] : undefined, slotDoses: m.slotDoses ? { ...m.slotDoses } : undefined, sos: m.sos }; });
   localStorage.setItem(key(doctorId), JSON.stringify(all));
 }
 
