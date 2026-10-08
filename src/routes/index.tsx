@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { FrequentMedicines, recordPrescribed } from "@/components/FrequentMedicines";
 import { catalog, learnPatterns, searchAll, usualPattern, type SearchResult } from "@/lib/medicines";
-import { MedicineEditSheet, groupFor, quantityFor, shortDose, type Medicine, type MedicineGroup } from "@/components/MedicineEditSheet";
+import { MedicineEditSheet, groupFor, hasDose, quantityFor, shortDose, type Medicine, type MedicineGroup } from "@/components/MedicineEditSheet";
 import { frequencyDisplay } from "@/lib/dosing-schedule";
 import { InvestigationResults, TestsAdvice, prepFor, resultLines, type PrepOverrides, type InvestigationResult } from "@/components/Investigations";
 
@@ -131,7 +131,8 @@ function Consultation() {
   const [followupNote, setFollowupNote] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [editingMedicineId, setEditingMedicineId] = useState<number | null>(null);
+  const [sheet, setSheet] = useState<{ medicine: Medicine; isNew: boolean } | null>(null);
+  const setEditingMedicineId = (id: number | null) => setSheet(() => { const m = medicines.find((x) => x.id === id); return m ? { medicine: m, isNew: false } : null; });
   const [allergyStatus, setAllergyStatus] = useState<AllergyStatus>("unknown");
   const [allergies, setAllergies] = useState<string[]>([]);
   const [allergyEditorOpen, setAllergyEditorOpen] = useState(false);
@@ -145,7 +146,6 @@ function Consultation() {
   const results = searchAll(query);
   const index = sections.findIndex((s) => s.key === active);
   const groups: MedicineGroup[] = ["NEW", "CHANGED", "CONTINUE", "STOP"];
-  const activeMedicine = medicines.find((m) => m.id === editingMedicineId) ?? null;
   const activeMedicines = medicines.filter((m) => !m.stopped);
 
   const filled: Record<SectionKey, boolean> = {
@@ -215,9 +215,21 @@ function Consultation() {
     setError("");
     searchRef.current?.focus();
   }
-  function addFromSearch(name: string, unlisted = false) { addNames([name], unlisted); }
-  function selectResult(r: SearchResult) { addNames(r.kind === "set" ? r.set.items : [r.item.name]); }
-  function pickFrequent(name: string) { addNames([name], !catalog.some((c) => c.name.toLowerCase() === name.toLowerCase()) && !usualPattern(DOCTOR_ID, name)); }
+  // A single medicine goes straight to the dosing sheet; it joins the prescription only when the doctor taps Add.
+  function openDosing(raw: string, unlisted = false) {
+    const name = raw.trim();
+    if (!name) return;
+    const existing = medicines.find((m) => m.name.trim().toLowerCase() === name.toLowerCase());
+    setQuery("");
+    setActiveResult(0);
+    setError("");
+    if (existing) { setSheet({ medicine: existing, isNew: false }); return; }
+    const p = unlisted ? undefined : usualPattern(DOCTOR_ID, name);
+    setSheet({ isNew: true, medicine: { id: nextId.current++, name, dose: p?.dose ?? "", frequency: p?.frequency ?? "", duration: p?.duration ?? "", instructions: p?.instructions ?? "", administrationTimes: p?.administrationTimes ? [...p.administrationTimes] : undefined, slotDoses: p?.slotDoses ? { ...p.slotDoses } : undefined, ...(unlisted ? { unlisted: true } : {}) } });
+  }
+  function addFromSearch(name: string, unlisted = false) { openDosing(name, unlisted); }
+  function selectResult(r: SearchResult) { if (r.kind === "set") addNames(r.set.items); else openDosing(r.item.name); }
+  function pickFrequent(name: string) { openDosing(name, !catalog.some((c) => c.name.toLowerCase() === name.toLowerCase()) && !usualPattern(DOCTOR_ID, name)); }
   function repeatMedicines(items: PastMedicine[]) {
     const added = items.filter((item) => !medicines.some((m) => m.name.toLowerCase() === item.name.toLowerCase())).map((item) => ({ ...item, previous: { ...item }, id: nextId.current++ }));
     setMedicines((current) => [...current, ...added]);
@@ -256,7 +268,7 @@ function Consultation() {
       requestAnimationFrame(() => searchRef.current?.focus());
       return;
     }
-    const incomplete = activeMedicines.find((item) => !item.name.trim() || !item.dose.trim() || !item.duration.trim());
+    const incomplete = activeMedicines.find((item) => !item.name.trim() || !hasDose(item) || !item.duration.trim());
     if (incomplete) {
       setActive("medicines");
       setError("Add a dose and duration for each medicine before generating.");
@@ -394,7 +406,7 @@ function Consultation() {
                {groups.map((group) => {
                  const items = medicines.filter((m) => groupFor(m) === group);
                  if (!items.length) return null;
-                 return <section key={group} aria-label={`${group} medicines`}><div className="flex items-center gap-3 pb-1.5"><h4 className={cn("text-[11px] font-bold tracking-wider", group === "STOP" ? "text-destructive" : "text-section-ink")}>{group}</h4><span className="h-px flex-1 bg-section-border" /></div><div className="divide-y divide-border overflow-hidden rounded-md border border-section-border bg-card">{items.map((medicine) => <Button key={medicine.id} id={`med-${medicine.id}`} type="button" variant="ghost" onClick={() => setEditingMedicineId(medicine.id)} className={cn("flex h-auto min-h-16 w-full min-w-0 items-center justify-between gap-3 rounded-none px-3 py-2.5 text-left font-normal hover:bg-section-soft sm:px-4", highlightId === medicine.id && "bg-section-soft ring-2 ring-inset ring-section-accent", group === "STOP" && "border-l-2 border-destructive")}><span className="min-w-0 flex-1"><span className="block break-words text-sm font-semibold text-foreground">{medicine.name}{medicine.unlisted && <span className="ml-2 text-[11px] font-normal text-muted-foreground">· Unlisted</span>}</span><span className={cn("mt-0.5 block whitespace-normal text-xs leading-5 text-muted-foreground", group === "STOP" && "font-semibold text-destructive")}>{group === "STOP" ? "Stop" : [shortDose(medicine.dose) || "Dose needed", frequencyDisplay(medicine) || "When needed", medicine.instructions, medicine.duration || "Duration needed", medicine.sos ? "SOS" : ""].filter(Boolean).join(" · ")}</span></span>{group !== "STOP" && <span className="shrink-0 whitespace-nowrap text-right text-xs font-semibold text-foreground">{quantityFor(medicine)}</span>}<ChevronRight size={15} className="shrink-0 text-muted-foreground" aria-hidden="true" /></Button>)}</div></section>;
+                 return <section key={group} aria-label={`${group} medicines`}><div className="flex items-center gap-3 pb-1.5"><h4 className={cn("text-[11px] font-bold tracking-wider", group === "STOP" ? "text-destructive" : "text-section-ink")}>{group}</h4><span className="h-px flex-1 bg-section-border" /></div><div className="divide-y divide-border overflow-hidden rounded-md border border-section-border bg-card">{items.map((medicine) => <Button key={medicine.id} id={`med-${medicine.id}`} type="button" variant="ghost" onClick={() => setEditingMedicineId(medicine.id)} className={cn("flex h-auto min-h-16 w-full min-w-0 items-center justify-between gap-3 rounded-none px-3 py-2.5 text-left font-normal hover:bg-section-soft sm:px-4", highlightId === medicine.id && "bg-section-soft ring-2 ring-inset ring-section-accent", group === "STOP" && "border-l-2 border-destructive")}><span className="min-w-0 flex-1"><span className="block break-words text-sm font-semibold text-foreground">{medicine.name}{medicine.unlisted && <span className="ml-2 text-[11px] font-normal text-muted-foreground">· Unlisted</span>}</span><span className={cn("mt-0.5 block whitespace-normal text-xs leading-5 text-muted-foreground", group === "STOP" && "font-semibold text-destructive")}>{group === "STOP" ? "Stop" : [medicine.slotDoses ? shortDose(medicine.dose) : shortDose(medicine.dose) || "Dose needed", frequencyDisplay(medicine) || "When needed", medicine.instructions, medicine.duration || "Duration needed", medicine.sos ? "SOS" : ""].filter(Boolean).join(" · ")}</span></span>{group !== "STOP" && <span className="shrink-0 whitespace-nowrap text-right text-xs font-semibold text-foreground">{quantityFor(medicine)}</span>}<ChevronRight size={15} className="shrink-0 text-muted-foreground" aria-hidden="true" /></Button>)}</div></section>;
                })}
              </div>}
           </section>}
@@ -413,7 +425,7 @@ function Consultation() {
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 px-4 py-3 shadow-lg backdrop-blur-sm print:hidden"><div className="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:px-4"><div className="hidden text-sm text-muted-foreground sm:block">{medicines.length ? `${medicines.length} ${medicines.length === 1 ? "medicine" : "medicines"} added` : "Ready to prescribe"} <span className="mx-2 text-border">·</span> Other sections are optional</div>{error && <p className="text-xs font-medium text-destructive sm:mr-auto sm:pl-4" role="alert">{error}</p>}<Button size="lg" className="w-full sm:w-auto" onClick={generate}><FileText size={17} /> Generate Prescription</Button></div></div>
 
-      <MedicineEditSheet medicine={activeMedicine} onClose={() => setEditingMedicineId(null)} onSave={(updated) => { setMedicines((items) => items.map((item) => item.id === updated.id ? updated : item)); setError(""); }} onRemove={(id) => setMedicines((items) => items.filter((item) => item.id !== id))} />
+      <MedicineEditSheet medicine={sheet?.medicine ?? null} isNew={!!sheet?.isNew} onClose={() => setSheet(null)} onClosed={() => searchRef.current?.focus()} onSave={(updated) => { setMedicines((items) => items.some((item) => item.id === updated.id) ? items.map((item) => item.id === updated.id ? updated : item) : [...items, updated]); setError(""); requestAnimationFrame(() => highlight(updated.id)); }} onRemove={(id) => setMedicines((items) => items.filter((item) => item.id !== id))} />
       {previewOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-3 sm:p-6 print:static print:block print:bg-background print:p-0" role="dialog" aria-modal="true" aria-label="Prescription preview" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewOpen(false); }}><div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-md bg-card shadow-2xl print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:shadow-none"><div className="flex items-center justify-between gap-2 border-b border-border px-5 py-4 print:hidden"><div><h2 className="font-bold">Prescription ready</h2><p className="text-xs text-muted-foreground">Review and print your prescription</p></div><Button variant="ghost" size="icon" aria-label="Close preview" onClick={() => setPreviewOpen(false)}><X size={19} /></Button></div><div className="overflow-y-auto px-5 py-6 sm:px-10 sm:py-9 print:overflow-visible print:px-10 print:py-8"><div className="flex items-start justify-between gap-4 border-b-2 border-primary pb-5"><div><div className="flex items-center gap-2 text-xl font-bold text-primary"><Activity size={22} /> Chikitra</div><p className="mt-1 text-xs text-muted-foreground">Doctor consultation prescription</p></div><div className="text-right text-xs text-muted-foreground"><p>Dr. Ankeeta Roy</p><p>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p></div></div><div className="grid grid-cols-2 gap-4 border-b border-border py-5 text-sm"><div><p className="text-xs text-muted-foreground">PATIENT</p><p className="mt-1 font-semibold">Ankeeta Roy</p><p className="text-muted-foreground">26 years · Female</p></div><div className="text-right"><p className="text-xs text-muted-foreground">PATIENT ID</p><p className="mt-1 font-medium">P6231C</p></div></div>
         {(complaints.trim() || vitalsText || examination.trim() || invResults.some((r) => r.test.trim() || r.values.trim())) && <div className="space-y-1.5 border-b border-border py-4 text-sm">
           {complaints.trim() && <p><span className="text-muted-foreground">Complaints: </span>{complaints}</p>}
@@ -426,7 +438,7 @@ function Consultation() {
           {advisedTests.length > 0 && <ul className="mt-2 space-y-1.5">{advisedTests.map((t) => { const p = prepFor(t, testPrep); return <li key={t}><span className="font-medium">{t}</span>{p && <span className="block text-muted-foreground">{p}</span>}</li>; })}</ul>}
           {invAdvice.trim() && <p className="mt-1 text-muted-foreground">{invAdvice}</p>}
         </div>}
-        <div className="py-6"><h3 className="mb-5 text-xl font-semibold text-primary">℞ <span className="ml-1 text-base text-foreground">Medicines</span></h3><div className="space-y-5">{medicines.map((medicine, i) => <div key={medicine.id} className="flex gap-4 border-b border-border pb-4 text-sm"><span className="text-muted-foreground">{String(i + 1).padStart(2, "0")}</span><div><p className="font-semibold">{medicine.name}</p><p className="mt-1 text-muted-foreground">{medicine.stopped ? "Stop" : `${medicine.dose} · ${frequencyDisplay(medicine)} · ${medicine.duration}${medicine.sos ? " · SOS" : ""}`}</p>{!medicine.stopped && medicine.instructions && <p className="mt-1 text-muted-foreground">{medicine.instructions}</p>}{!medicine.stopped && quantityFor(medicine) !== "—" && <p className="mt-1 text-muted-foreground">Quantity: {quantityFor(medicine)}</p>}</div></div>)}</div></div>
+        <div className="py-6"><h3 className="mb-5 text-xl font-semibold text-primary">℞ <span className="ml-1 text-base text-foreground">Medicines</span></h3><div className="space-y-5">{medicines.map((medicine, i) => <div key={medicine.id} className="flex gap-4 border-b border-border pb-4 text-sm"><span className="text-muted-foreground">{String(i + 1).padStart(2, "0")}</span><div><p className="font-semibold">{medicine.name}</p><p className="mt-1 text-muted-foreground">{medicine.stopped ? "Stop" : [medicine.dose, frequencyDisplay(medicine), medicine.duration, medicine.sos ? "SOS" : ""].filter(Boolean).join(" · ")}</p>{!medicine.stopped && medicine.instructions && <p className="mt-1 text-muted-foreground">{medicine.instructions}</p>}{!medicine.stopped && quantityFor(medicine) !== "—" && <p className="mt-1 text-muted-foreground">Quantity: {quantityFor(medicine)}</p>}</div></div>)}</div></div>
         {filled.followup && <div className="text-sm"><span className="font-semibold">Follow-up: </span>{[followup && `After ${followup}`, followupNote.trim()].filter(Boolean).join(" — ")}</div>}
         <div className="mt-16 border-t border-border pt-5 text-right text-xs text-muted-foreground">Doctor's signature</div></div><div className="flex justify-end gap-2 border-t border-border px-5 py-4 print:hidden"><Button variant="outline" onClick={() => setPreviewOpen(false)}>Edit prescription</Button><Button onClick={() => window.print()}><Printer size={16} /> Print / Save PDF</Button></div></div></div>}
     </div>
