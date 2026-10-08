@@ -6,7 +6,7 @@ import { learnPatterns, usualPattern } from "@/lib/medicines";
 const medicine: Medicine = { id: 1, name: "Example tablet", dose: "1 tablet", frequency: "Twice daily", duration: "5 days", instructions: "After food", administrationTimes: ["morning", "night"] };
 describe("one dosing schedule", () => {
   it("generates wording and quantity for OD, BD and TDS", () => {
-    for (const [frequency, text, quantity] of [["Once daily", "Once a day (0-1-0)", "5 tablets"], ["Twice daily", "Twice a day (1-0-1)", "10 tablets"], ["Three times daily", "Three times a day (1-1-1)", "15 tablets"]]) {
+    for (const [frequency, text, quantity] of [["Once daily", "Once a day (0-1-0)", "5 tablets"], ["Twice daily", "Twice a day (1-0-1)", "10 tablets"], ["Three times daily", "Three times a day (1-1-1)", "15 tablets"]] as const) {
       const m = { ...medicine, frequency, administrationTimes: defaultAdministrationTimes(frequency) };
       expect(frequencyDisplay(m)).toBe(text);
       expect(quantityFor(m)).toBe(quantity);
