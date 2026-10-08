@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { administrationSlots, administrationsPerDay, doseAmount, formatAmount, frequencyDisplay, frequencyForTimes, selectedTimes, slotDosesFor, tableSlots, type SlotDoses } from "@/lib/dosing-schedule";
 import type { Pattern } from "@/lib/medicines";
 
-export type Medicine = Pattern & { id: number; name: string; unlisted?: boolean; previous?: Pattern & { name: string }; stopped?: boolean; quantityOverride?: string; noLearn?: boolean };
+export type Medicine = Pattern & { id: number; name: string; unlisted?: boolean; previous?: Pattern & { name: string }; stopped?: boolean; quantityOverride?: string; noLearn?: boolean | undefined };
 export type MedicineGroup = "NEW" | "CHANGED" | "CONTINUE" | "STOP";
 const normalize = (value: string) => value.trim().toLowerCase().replace(/\btablet(s)?\b/g, "tab$1").replace(/\bcapsule(s)?\b/g, "cap$1");
 const slotKey = (d: SlotDoses) => administrationSlots.map((s) => d[s] ?? 0).join("-");
