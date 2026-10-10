@@ -10,6 +10,7 @@ import { catalog, learnPatterns, searchAll, usualPattern, type SearchResult } fr
 import { MedicineEditSheet, groupFor, hasDose, quantityFor, shortDose, type Medicine, type MedicineGroup } from "@/components/MedicineEditSheet";
 import { frequencyDisplay } from "@/lib/dosing-schedule";
 import { InvestigationResults, TestsAdvice, prepFor, resultLines, type PrepOverrides, type InvestigationResult } from "@/components/Investigations";
+import { PastHistory } from "@/components/PastHistory";
 
 // Demo signed-in doctor — replace with the authenticated doctor when services are connected.
 const DOCTOR_ID = "demo-doctor";
@@ -363,6 +364,7 @@ function Consultation() {
            {active === "visit" && <div className="space-y-6">
              <h2 className="border-l-4 border-section-accent pl-3 text-2xl font-bold text-section-ink">Visit</h2>
              <SectionBlock title="Chief Complaints" hint=""><Textarea aria-label="Chief complaints" value={complaints} onChange={(e) => setComplaints(e.target.value)} placeholder="e.g. Fever and sore throat for 3 days" rows={2} /></SectionBlock>
+             <SectionBlock title="Past History" hint="Pre-existing conditions — tap all that apply."><PastHistory patientId="P6231C" /></SectionBlock>
              <SectionBlock title="Vitals" hint=""><div className="grid grid-cols-2 gap-3 sm:grid-cols-5">{vitalFields.map((f) => <label key={f.key} className="block text-xs font-semibold text-muted-foreground">{f.label}<Input inputMode="decimal" value={vitals[f.key]} onChange={(e) => setVitals((v) => ({ ...v, [f.key]: e.target.value }))} placeholder={f.placeholder} className="mt-1.5 h-10 text-foreground" /></label>)}</div></SectionBlock>
               <SectionBlock title="Examination" hint=""><Textarea aria-label="Examination findings" value={examination} onChange={(e) => setExamination(e.target.value)} placeholder="e.g. Throat congested, chest clear" rows={2} /></SectionBlock>
              <InvestigationResults results={invResults} setResults={setInvResults} />
