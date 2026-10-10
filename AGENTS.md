@@ -15,4 +15,5 @@
 - Define consultation-section accent, ink, tint, and border colors by section in global CSS so tabs and active panels share one semantic identity without altering prescription actions.
 - Keep medicine rows grouped by inferred comparison with the relevant repeated prescription; selecting a single medicine opens the compact morning–afternoon–night + days sheet before it joins the prescription (sets add directly), and the same sheet edits rows; calculate quantity only for parseable finite regimens, never inventing one, to avoid unsafe inferred quantities.
 - Investigations split: results in Visit, tests in Investigations → Tests & Advice.
+- Past History lives in src/components/PastHistory.tsx as a self-contained patient-scoped browser-persisted section inside Visit; it is longitudinal record-keeping, not per-visit documentation, so it stays out of the per-tab "filled" tracking.
 - Store explicit administration slots with medicine patterns; use shared schedule helpers for wording, shorthand, quantity, and repeat comparison so those outputs cannot drift. Legacy and unparseable custom frequencies must not invent timings.

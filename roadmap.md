@@ -5,3 +5,4 @@
 - [x] Verify timing edits, quantities, repeat comparison, and learned schedule reuse.
 - [x] Add default-on "Save this for future use" to the dosing sheet for medicines not yet saved; opted-out medicines skip learning and usage counts.
 - [x] Saving learns the full pattern, pre-fills next time, and makes the medicine eligible for frequently-used chips; verify in browser.
+- [x] Add Past History to Visit (after Chief Complaints): condition chips, Others free text, mutually exclusive Nil with confirm, per-patient persistence with new-vs-recorded distinction.
