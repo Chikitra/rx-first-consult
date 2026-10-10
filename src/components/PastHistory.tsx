@@ -107,7 +107,7 @@ export function PastHistory({ patientId }: { patientId: string }) {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="font-semibold">{condition.label}</span>
-                {condition.full && <span className={cn("ml-1.5 text-xs font-normal", selected ? "text-section-ink/80" : "text-muted-foreground")}>{condition.full}</span>}
+                {condition.full && <span className={cn("ml-1.5 text-xs font-normal", selected ? "text-section-ink/80" : "text-muted-foreground")}>{" "}{condition.full}</span>}
               </span>
               {isNew && <span className="shrink-0 rounded-full bg-section-accent px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">New</span>}
             </button>
