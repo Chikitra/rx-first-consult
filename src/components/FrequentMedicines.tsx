@@ -99,7 +99,7 @@ export function FrequentMedicines({ doctorId, currentNames, onPick }: { doctorId
     const added = currentNames.includes(n.toLowerCase());
     return (
       <button key={n} type="button" onClick={() => pick(n)} title={added ? "Already in current prescription" : `Add ${n}`}
-        className={cn("inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]",
+        className={cn("inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]",
           added ? "border-section-accent bg-section-soft text-section-ink" : "border-section-border bg-section-surface text-foreground hover:border-section-accent hover:bg-section-soft",
           flash === n && "ring-2 ring-section-accent")}>
         {prefs.pinned.includes(n) && <Pin size={12} className="text-section-ink" aria-label="Pinned" />}
