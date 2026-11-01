@@ -98,14 +98,14 @@ export function FrequentMedicines({ doctorId, currentNames, onPick }: { doctorId
   const chip = (n: string) => {
     const added = currentNames.includes(n.toLowerCase());
     return (
-      <Button key={n} type="button" variant="outline" onClick={() => pick(n)} title={added ? "Already in current prescription" : `Add ${n}`}
-        className={cn("inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-control border px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none",
+      <button key={n} type="button" onClick={() => pick(n)} title={added ? "Already in current prescription" : `Add ${n}`}
+        className={cn("inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]",
           added ? "border-section-accent bg-section-soft text-section-ink" : "border-section-border bg-section-surface text-foreground hover:border-section-accent hover:bg-section-soft",
           flash === n && "ring-2 ring-section-accent")}>
         {prefs.pinned.includes(n) && <Pin size={12} className="text-section-ink" aria-label="Pinned" />}
         {added ? <Check size={13} className="text-section-ink" /> : <Plus size={13} className="text-section-ink" />}
         {chipLabel(n)}
-      </Button>
+      </button>
     );
   };
 

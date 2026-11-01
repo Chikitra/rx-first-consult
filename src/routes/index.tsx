@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Activity, AlertTriangle, ArrowLeft, CalendarCheck, Check, ChevronDown, ChevronLeft, ChevronRight, ClipboardList, FileText, FlaskConical, History, Pill, Plus, Printer, Search, Trash2, X } from "lucide-react";
+import { Activity, AlertTriangle, ArrowLeft, Check, ChevronDown, ChevronLeft, ChevronRight, FileText, History, Plus, Printer, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,7 +39,6 @@ const sections: { key: SectionKey; label: string }[] = [
   { key: "medicines", label: "Medicines" },
   { key: "followup", label: "Follow-up" },
 ];
-const sectionIcons = { visit: ClipboardList, investigations: FlaskConical, medicines: Pill, followup: CalendarCheck };
 const vitalFields: { key: VitalKey; label: string; placeholder: string }[] = [
   { key: "bp", label: "BP (mmHg)", placeholder: "120/80" },
   { key: "pulse", label: "Pulse (bpm)", placeholder: "72" },
@@ -85,20 +84,20 @@ function LastPrescription({ currentNames, onRepeat, onStop }: { currentNames: st
     setSelected(rx!.medicines.map(() => false));
   }
   return (
-    <div className="mb-6 border-l-2 border-border pl-3 sm:pl-4" aria-label="Last prescription">
+    <div className="mb-5 rounded-md border border-border bg-muted/40 p-3 sm:p-4" aria-label="Last prescription">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="mb-1 flex items-center gap-2 text-xs font-medium text-muted-foreground"><History size={14} />{index === 0 ? "Last prescription" : "Previous prescription"}</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{index === 0 ? "Last prescription" : "Previous prescription"}</p>
           <p className="text-sm font-medium">{rx.date} · {rx.doctor}</p>
         </div>
         {pastPrescriptions.length > 1 && <Button size="sm" variant="ghost" className="h-8 text-muted-foreground" aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}><History size={15} /> View previous prescriptions</Button>}
       </div>
       {showAll && <div className="mt-2 flex flex-wrap gap-2">{pastPrescriptions.map((p, i) => <Button key={p.date} size="sm" variant="outline" aria-pressed={i === index} className={i === index ? "font-semibold" : ""} onClick={() => pick(i)}>{p.date} · {p.medicines.length} meds</Button>)}</div>}
-      <ul className="mt-2 divide-y divide-border">
+      <ul className="mt-3 divide-y divide-border rounded-md border border-border bg-card">
         {rx.medicines.map((m, i) => {
           const already = currentNames.includes(m.name.toLowerCase());
           return <li key={m.name}>
-            <label className="flex cursor-pointer items-start gap-3 py-2.5">
+            <label className="flex cursor-pointer items-start gap-3 px-3 py-2.5">
               <input type="checkbox" className="mt-1 size-4 shrink-0 accent-[var(--section-accent)]" checked={!!selected[i]} onChange={() => setSelected((s) => s.map((v, j) => j === i ? !v : v))} />
               <span className="min-w-0 flex-1">
                 <span className={cn("block text-sm font-semibold", !selected[i] && "text-muted-foreground")}>{m.name}{already && <span className="ml-2 text-xs font-medium text-section-ink">· already in today's Rx</span>}</span>
@@ -307,13 +306,14 @@ function Consultation() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 pb-32 pt-5 sm:px-8 sm:pt-6">
+      <main className="mx-auto max-w-5xl px-4 pb-32 pt-6 sm:px-8 sm:pt-8">
         <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground"><ArrowLeft size={16} aria-hidden="true" /><span>Live OPD queue</span><span className="px-1">/</span><span className="font-medium text-foreground">Consultation</span></div>
 
-        <section aria-label="Patient information" className="border-b border-border pb-5 pt-2">
+        <section aria-label="Patient information" className="rounded-md border border-border bg-card p-4 sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <h1 className="truncate text-3xl font-semibold">Ankeeta Roy</h1>
+              <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase text-primary"><span className="size-1.5 rounded-full bg-primary" /> In consultation</div>
+              <h1 className="truncate text-2xl font-bold">Ankeeta Roy</h1>
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground"><span>26 years · Female</span><span className="text-border">|</span><span>Patient ID P6231C</span><span className="text-border">|</span><span>Last visit 27 Sep 2026</span></div>
             </div>
             <Button variant="outline" size="sm" className="self-start sm:self-auto" onClick={() => setHistoryOpen((value) => !value)} aria-expanded={historyOpen}><History size={16} /> Past visits <ChevronDown size={14} className={historyOpen ? "rotate-180" : ""} /></Button>
@@ -325,7 +325,6 @@ function Consultation() {
           <div role="tablist" className="flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" onKeyDown={onTabKey}>
             {sections.map((s) => {
               const isActive = s.key === active;
-              const Icon = sectionIcons[s.key];
               return (
                 <Button
                   key={s.key}
@@ -337,12 +336,12 @@ function Consultation() {
                   tabIndex={isActive ? 0 : -1}
                   onClick={() => go(s.key)}
                   className={cn(
-                     "consultation-theme relative h-12 shrink-0 gap-2 rounded-none border-0 px-3 text-sm shadow-none transition-colors focus-visible:z-10 sm:px-5",
+                     "consultation-theme relative h-12 shrink-0 gap-1.5 rounded-none border-0 px-3 text-sm shadow-none transition-colors focus-visible:z-10 sm:px-4",
                      isActive ? "bg-section-soft font-bold text-section-ink hover:bg-section-soft hover:text-section-ink" : "bg-transparent font-medium text-muted-foreground hover:bg-section-soft hover:text-section-ink",
                   )}
                    variant="ghost"
                 >
-                   <Icon size={16} aria-hidden="true" className="shrink-0 text-section-accent" />
+                   <span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full bg-section-accent", isActive ? "opacity-100" : "opacity-45")} />
                   {s.label}
                    {s.key === "medicines" && medicines.length > 0 && <span className="rounded-full bg-section-accent px-1.5 text-[11px] font-semibold leading-5 text-primary-foreground">{medicines.length}</span>}
                    {s.key !== "medicines" && filled[s.key] && <span className="size-1.5 rounded-full bg-section-accent" aria-label="has entries" />}
@@ -354,9 +353,10 @@ function Consultation() {
           </div>
         </nav>
 
-         <div id="section-panel" role="tabpanel" aria-labelledby={`tab-${active}`} data-section={active} className="consultation-theme -mx-4 border-b border-section-border bg-section-surface px-4 py-6 sm:mx-0 sm:px-5">
+         <div id="section-panel" role="tabpanel" aria-labelledby={`tab-${active}`} data-section={active} className="consultation-theme mt-4 rounded-md border border-section-border bg-section-surface p-4 sm:p-6">
           {active !== "medicines" && (
              <div className="mb-5 flex flex-wrap items-center justify-between gap-2 border-b border-section-border pb-3 text-sm">
+               <span className="text-muted-foreground">Optional — skip anytime.</span>
               <Button size="sm" variant="ghost" className="h-8 text-primary" onClick={() => go("medicines")}>Go to Medicines <ChevronRight size={15} /></Button>
             </div>
           )}
@@ -364,7 +364,7 @@ function Consultation() {
            {active === "visit" && <div className="space-y-6">
              <h2 className="border-l-4 border-section-accent pl-3 text-2xl font-bold text-section-ink">Visit</h2>
              <SectionBlock title="Chief Complaints" hint=""><Textarea aria-label="Chief complaints" value={complaints} onChange={(e) => setComplaints(e.target.value)} placeholder="e.g. Fever and sore throat for 3 days" rows={2} /></SectionBlock>
-             <SectionBlock title="Past History" hint=""><PastHistory patientId="P6231C" /></SectionBlock>
+             <SectionBlock title="Past History" hint="Pre-existing conditions — tap all that apply."><PastHistory patientId="P6231C" /></SectionBlock>
              <SectionBlock title="Vitals" hint=""><div className="grid grid-cols-2 gap-3 sm:grid-cols-5">{vitalFields.map((f) => <label key={f.key} className="block text-xs font-semibold text-muted-foreground">{f.label}<Input inputMode="decimal" value={vitals[f.key]} onChange={(e) => setVitals((v) => ({ ...v, [f.key]: e.target.value }))} placeholder={f.placeholder} className="mt-1.5 h-10 text-foreground" /></label>)}</div></SectionBlock>
               <SectionBlock title="Examination" hint=""><Textarea aria-label="Examination findings" value={examination} onChange={(e) => setExamination(e.target.value)} placeholder="e.g. Throat congested, chest clear" rows={2} /></SectionBlock>
              <InvestigationResults results={invResults} setResults={setInvResults} />
@@ -374,11 +374,12 @@ function Consultation() {
           {active === "investigations" && <div className="space-y-5">
             <h2 className="border-l-4 border-section-accent pl-3 text-2xl font-bold text-section-ink">Investigations</h2>
             <TestsAdvice doctorId={DOCTOR_ID} tests={advisedTests} setTests={setAdvisedTests} prep={testPrep} setPrep={setTestPrep} advice={invAdvice} setAdvice={setInvAdvice} />
+            <p className="text-xs text-muted-foreground">Have a report already? Record it in <button type="button" className="font-medium text-primary underline-offset-2 hover:underline" onClick={() => go("visit")}>Visit → Investigation Results</button>.</p>
           </div>}
 
           {active === "medicines" && <section aria-labelledby="prescription-title">
             <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-               <h2 id="prescription-title" className="text-2xl font-semibold text-foreground">Medicines</h2>
+               <h2 id="prescription-title" className="border-l-4 border-section-accent pl-3 text-2xl font-bold text-section-ink">Medicines</h2>
               <span className="text-sm text-muted-foreground">{medicines.length} {medicines.length === 1 ? "medicine" : "medicines"}</span>
             </div>
              <AllergyPanel location="medicines" status={allergyStatus} allergies={allergies} editorOpen={allergyEditorOpen} setEditorOpen={setAllergyEditorOpen} input={allergyInput} setInput={setAllergyInput} setAllergies={setAllergies} addAllergy={addAllergy} removeAllergy={removeAllergy} setAllergyState={setAllergyState} />
@@ -405,7 +406,7 @@ function Consultation() {
             </div>
              <FrequentMedicines doctorId={DOCTOR_ID} currentNames={medicines.map((m) => m.name.trim().toLowerCase())} onPick={pickFrequent} />
              <div className="mt-6 flex items-center justify-between gap-2"><h3 className="text-xs font-bold uppercase tracking-wider text-section-ink">Current prescription <span className="font-medium normal-case tracking-normal text-muted-foreground">· today</span></h3><Button size="sm" variant="ghost" className="h-8 text-section-ink" onClick={() => searchRef.current?.focus()}><Plus size={15} /> Add medicine</Button></div>
-             {medicines.length === 0 ? <div className="mt-2 flex min-h-20 items-center gap-3 border-y border-section-border py-5 text-muted-foreground"><Pill size={20} strokeWidth={1.5} aria-hidden="true" /><p className="text-sm">No medicines prescribed yet</p></div> : <div className="mt-3 space-y-4">
+             {medicines.length === 0 ? <div className="mt-2 flex min-h-36 flex-col items-center justify-center rounded-md border border-dashed border-section-border bg-card px-4 py-6 text-center"><span className="mb-2 flex size-9 items-center justify-center rounded-md bg-section-soft text-section-ink"><Plus size={20} /></span><h3 className="font-semibold">Start prescription</h3><p className="mt-1 text-sm text-muted-foreground">Search for a medicine above or enter one manually.</p></div> : <div className="mt-3 space-y-4">
                {groups.map((group) => {
                  const items = medicines.filter((m) => groupFor(m) === group);
                  if (!items.length) return null;
@@ -451,7 +452,7 @@ function Consultation() {
 function SectionBlock({ title, hint, children }: { title: string; hint: string; children: React.ReactNode }) {
   return (
     <section>
-       <h2 className="text-base font-semibold text-foreground">{title}</h2>
+       <h2 className="border-l-4 border-section-accent pl-3 text-xl font-bold text-section-ink">{title}</h2>
        {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
        <div className="mt-3">{children}</div>
     </section>
@@ -466,7 +467,7 @@ function AllergyPanel({ location, status, allergies, editorOpen, setEditorOpen, 
 }) {
   const question = location === "visit" && status === "unknown";
   const editorId = `allergy-editor-${location}`;
-  return <section className={cn("border-l-2 px-3 py-2 sm:px-4", location === "medicines" && "mb-5", status === "known" ? "border-allergy-alert-border bg-allergy-alert text-allergy-alert-foreground" : status === "none" ? "border-allergy-clear-border bg-allergy-clear text-allergy-clear-foreground" : "border-allergy-unknown-border bg-allergy-unknown text-allergy-unknown-foreground")} aria-label="Patient drug allergy status">
+  return <section className={cn("rounded-md border px-3 py-3 sm:px-4", location === "medicines" && "mb-4", status === "known" ? "border-allergy-alert-border bg-allergy-alert text-allergy-alert-foreground" : status === "none" ? "border-allergy-clear-border bg-allergy-clear text-allergy-clear-foreground" : "border-allergy-unknown-border bg-allergy-unknown text-allergy-unknown-foreground")} aria-label="Patient drug allergy status">
     <div className="flex items-start justify-between gap-2">
       <div className="flex min-w-0 items-start gap-2.5">
         {status === "none" ? <Check size={19} className="mt-0.5 shrink-0" aria-hidden="true" /> : <AlertTriangle size={19} className="mt-0.5 shrink-0" aria-hidden="true" />}
