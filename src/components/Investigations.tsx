@@ -181,7 +181,7 @@ export function TestsAdvice({ doctorId, tests, setTests, prep, setPrep, advice, 
           </div>}
         </div>
         {quick.length > 0 && <div className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Common tests">
-          {quick.map((t) => <button key={t} type="button" className="shrink-0 rounded-full border border-section-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-section-soft" onClick={() => add(t)}><Plus size={12} className="mr-1 inline" />{t}</button>)}
+          {quick.map((t) => <Button key={t} type="button" variant="outline" className="h-auto shrink-0 rounded-md border-section-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-section-soft" onClick={() => add(t)}><Plus size={12} />{t}</Button>)}
         </div>}
       </section>
 

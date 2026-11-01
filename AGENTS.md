@@ -17,3 +17,4 @@
 - Investigations split: results in Visit, tests in Investigations → Tests & Advice.
 - Past History lives in src/components/PastHistory.tsx as a self-contained patient-scoped browser-persisted section inside Visit; it is longitudinal record-keeping, not per-visit documentation, so it stays out of the per-tab "filled" tracking.
 - Store explicit administration slots with medicine patterns; use shared schedule helpers for wording, shorthand, quantity, and repeat comparison so those outputs cannot drift. Legacy and unparseable custom frequencies must not invent timings.
+- Load the sole font locally through the global stylesheet and centralize typography, corner radii, and section palettes in semantic CSS tokens so consultation views and sheets remain consistent.
