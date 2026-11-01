@@ -49,18 +49,13 @@ export function InvestigationResults({ results, setResults }: { results: Investi
 
   return (
     <section aria-labelledby="results-title">
-      <div className="mb-2 flex items-baseline gap-2">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
         <FlaskConical size={16} className="text-section-accent" aria-hidden />
         <h3 id="results-title" className="text-sm font-bold">Investigation Results</h3>
-        <span className="text-xs text-muted-foreground">Results already available — reports brought, tests done today, or anything received</span>
       </div>
       <div className="rounded-md border border-section-border bg-card">
         {results.length === 0 ? (
-          <button type="button" className="flex w-full flex-col items-center gap-1 px-4 py-6 text-center hover:bg-section-soft" onClick={add}>
-            <span className="flex size-8 items-center justify-center rounded-md bg-section-soft text-section-ink"><Plus size={18} /></span>
-            <span className="text-sm font-medium text-section-ink">Add result</span>
-            <span className="text-xs text-muted-foreground">Type a report in any format — no test list, no fixed fields</span>
-          </button>
+          <Button type="button" variant="ghost" className="h-11 w-full justify-start rounded-none px-3 text-section-ink hover:bg-section-soft" onClick={add}><Plus size={16} /> Add result</Button>
         ) : (
           <>
             <ul className="divide-y divide-border">
@@ -87,7 +82,7 @@ export function InvestigationResults({ results, setResults }: { results: Investi
                 </li>
               ))}
             </ul>
-            <button type="button" className="flex w-full items-center gap-2 border-t border-border px-4 py-2.5 text-left text-sm font-medium text-section-ink hover:bg-section-soft" onClick={add}><Plus size={15} /> Add result</button>
+            <Button type="button" variant="ghost" className="h-10 w-full justify-start rounded-none border-t border-border px-4 text-section-ink hover:bg-section-soft" onClick={add}><Plus size={15} /> Add result</Button>
           </>
         )}
       </div>
@@ -132,18 +127,18 @@ export function TestsAdvice({ doctorId, tests, setTests, prep, setPrep, advice, 
   return (
     <div className="space-y-6">
       <section aria-labelledby="tests-title">
-        <div className="mb-2 flex items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
           <ClipboardList size={16} className="text-section-accent" aria-hidden />
           <h3 id="tests-title" className="text-sm font-bold">Tests & Advice</h3>
           <span className="text-xs text-muted-foreground">To get done after today</span>
         </div>
         <SavedPanels doctorId={doctorId} catalog={commonTests} current={tests} onAdd={addMany} />
-        {tests.length > 0 ? <ul className="mb-3 space-y-1.5" aria-label="Advised tests">
+        {tests.length > 0 ? <ul className="mb-4 divide-y divide-section-border border-y border-section-border" aria-label="Advised tests">
           {tests.map((t) => {
             const value = prepFor(t, prep);
             const isDefault = !(pk(t) in prep) && !!testPreparation[pk(t)];
-            return <li key={t} className="flex items-start gap-3 rounded-md border border-dashed border-section-border bg-card px-3 py-2">
-              <span className="mt-1 h-4 w-4 shrink-0 rounded-sm border-2 border-section-accent" aria-hidden />
+            return <li key={t} className="flex items-start gap-3 py-3">
+              <FlaskConical size={16} className="mt-1 shrink-0 text-section-accent" aria-hidden />
               <div className="min-w-0 flex-1">
                 <span className="block font-medium">{t}</span>
                 {editingPrep === t ? (
@@ -187,7 +182,7 @@ export function TestsAdvice({ doctorId, tests, setTests, prep, setPrep, advice, 
 
       <section>
         <label htmlFor="inv-advice" className="mb-2 block text-sm font-bold">Advice</label>
-        <Textarea id="inv-advice" value={advice} onChange={(e) => setAdvice(e.target.value)} rows={2} placeholder="e.g. Fasting sample for HbA1c and lipid profile; bring reports at review" />
+        <Textarea id="inv-advice" value={advice} onChange={(e) => setAdvice(e.target.value)} rows={2} placeholder="Additional advice (optional)" />
       </section>
     </div>
   );
