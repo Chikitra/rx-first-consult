@@ -376,6 +376,18 @@ function Consultation() {
               <SectionBlock title="Examination" hint=""><Textarea aria-label="Examination findings" value={examination} onChange={(e) => setExamination(e.target.value)} placeholder="e.g. Throat congested, chest clear" rows={2} /></SectionBlock>
              <InvestigationResults results={invResults} setResults={setInvResults} />
              <AllergyPanel location="visit" status={allergyStatus} allergies={allergies} editorOpen={allergyEditorOpen} setEditorOpen={setAllergyEditorOpen} input={allergyInput} setInput={setAllergyInput} setAllergies={setAllergies} addAllergy={addAllergy} removeAllergy={removeAllergy} setAllergyState={setAllergyState} />
+             <SectionBlock title="Diagnosis" hint="">
+               <Input aria-label="Diagnosis" value={diagnosis} onChange={(event) => setDiagnosis(event.target.value)} placeholder="e.g. Acute pharyngitis" className="h-10 text-foreground" />
+               <div role="group" aria-label="Diagnosis type" className="mt-3 flex flex-wrap gap-2">
+                 {diagnosisTypes.map((type) => {
+                   const selected = diagnosisType === type.key;
+                   return <label key={type.key} className={cn("flex min-h-11 cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2 text-sm", selected ? "border-section-accent bg-section-soft font-semibold text-section-ink" : "border-border bg-card text-foreground hover:bg-section-soft/50")}>
+                     <input type="radio" name="diagnosis-type" className="size-4 shrink-0 accent-[var(--section-accent)]" checked={selected} onChange={() => setDiagnosisType(type.key)} />
+                     {type.label}
+                   </label>;
+                 })}
+               </div>
+             </SectionBlock>
            </div>}
 
           {active === "investigations" && <div className="space-y-5">
@@ -438,11 +450,12 @@ function Consultation() {
 
       <MedicineEditSheet medicine={sheet?.medicine ?? null} isNew={!!sheet?.isNew} showSave={!!sheet?.showSave} onClose={() => setSheet(null)} onClosed={() => searchRef.current?.focus()} onSave={(updated, saveForFuture) => { setMedicines((items) => items.some((item) => item.id === updated.id) ? items.map((item) => item.id === updated.id ? updated : item) : [...items, updated]); if (sheet?.isNew && sheet.showSave && saveForFuture) { learnPatterns(DOCTOR_ID, [updated]); recordSaved(DOCTOR_ID, updated.name.trim()); } setError(""); requestAnimationFrame(() => highlight(updated.id)); }} onRemove={(id) => setMedicines((items) => items.filter((item) => item.id !== id))} />
       {previewOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-3 sm:p-6 print:static print:block print:bg-background print:p-0" role="dialog" aria-modal="true" aria-label="Prescription preview" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewOpen(false); }}><div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-md bg-card shadow-2xl print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:shadow-none"><div className="flex items-center justify-between gap-2 border-b border-border px-5 py-4 print:hidden"><div><h2 className="font-bold">Prescription ready</h2><p className="text-xs text-muted-foreground">Review and print your prescription</p></div><Button variant="ghost" size="icon" aria-label="Close preview" onClick={() => setPreviewOpen(false)}><X size={19} /></Button></div><div className="overflow-y-auto px-5 py-6 sm:px-10 sm:py-9 print:overflow-visible print:px-10 print:py-8"><div className="flex items-start justify-between gap-4 border-b-2 border-primary pb-5"><div><div className="flex items-center gap-2 text-xl font-bold text-primary"><Activity size={22} /> Chikitra</div><p className="mt-1 text-xs text-muted-foreground">Doctor consultation prescription</p></div><div className="text-right text-xs text-muted-foreground"><p>Dr. Ankeeta Roy</p><p>{new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</p></div></div><div className="grid grid-cols-2 gap-4 border-b border-border py-5 text-sm"><div><p className="text-xs text-muted-foreground">PATIENT</p><p className="mt-1 font-semibold">Ankeeta Roy</p><p className="text-muted-foreground">26 years · Female</p></div><div className="text-right"><p className="text-xs text-muted-foreground">PATIENT ID</p><p className="mt-1 font-medium">P6231C</p></div></div>
-        {(complaints.trim() || vitalsText || examination.trim() || invResults.some((r) => r.test.trim() || r.values.trim())) && <div className="space-y-1.5 border-b border-border py-4 text-sm">
+        {(complaints.trim() || vitalsText || examination.trim() || diagnosis.trim() || invResults.some((r) => r.test.trim() || r.values.trim())) && <div className="space-y-1.5 border-b border-border py-4 text-sm">
           {complaints.trim() && <p><span className="text-muted-foreground">Complaints: </span>{complaints}</p>}
           {vitalsText && <p><span className="text-muted-foreground">Vitals: </span>{vitalsText}</p>}
           {examination.trim() && <p><span className="text-muted-foreground">Examination: </span>{examination}</p>}
           {invResults.some((r) => r.test.trim() || r.values.trim()) && <p><span className="text-muted-foreground">Investigation results: </span>{invResults.filter((r) => r.test.trim() || r.values.trim()).map((r) => [r.test.trim(), resultLines(r.values).join(", ")].filter(Boolean).join(" — ")).join("; ")}</p>}
+          {diagnosis.trim() && <p><span className="text-muted-foreground">Diagnosis ({diagnosisType === "final" ? "Final" : "Provisional"}): </span>{diagnosis}</p>}
         </div>}
         {(advisedTests.length > 0 || invAdvice.trim()) && <div className="border-b border-border py-4 text-sm">
           <p className="font-semibold uppercase tracking-wide">Tests &amp; Advice</p>
