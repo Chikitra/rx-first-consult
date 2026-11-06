@@ -30,6 +30,7 @@ export const Route = createFileRoute("/")({
 });
 
 type AllergyStatus = "unknown" | "none" | "known";
+type DiagnosisType = "provisional" | "final";
 type SectionKey = "visit" | "investigations" | "medicines" | "followup";
 type VitalKey = "bp" | "pulse" | "temp" | "spo2" | "weight";
 
@@ -47,6 +48,10 @@ const vitalFields: { key: VitalKey; label: string; placeholder: string }[] = [
   { key: "weight", label: "Weight (kg)", placeholder: "60" },
 ];
 
+const diagnosisTypes: { key: DiagnosisType; label: string }[] = [
+  { key: "provisional", label: "Provisional" },
+  { key: "final", label: "Final" },
+];
 const chipName = (n: string) => n.replace(/\s+(tablet|capsule|sachet|syrup)s?$/i, "");
 const followupPresets = ["3 days", "5 days", "1 week", "2 weeks", "1 month"];
 
@@ -124,6 +129,8 @@ function Consultation() {
   const [complaints, setComplaints] = useState("");
   const [vitals, setVitals] = useState<Record<VitalKey, string>>({ bp: "", pulse: "", temp: "", spo2: "", weight: "" });
   const [examination, setExamination] = useState("");
+  const [diagnosis, setDiagnosis] = useState("");
+  const [diagnosisType, setDiagnosisType] = useState<DiagnosisType>("provisional");
   const [invResults, setInvResults] = useState<InvestigationResult[]>([]);
   const [advisedTests, setAdvisedTests] = useState<string[]>([]);
   const [testPrep, setTestPrep] = useState<PrepOverrides>({});
@@ -150,7 +157,7 @@ function Consultation() {
   const activeMedicines = medicines.filter((m) => !m.stopped);
 
   const filled: Record<SectionKey, boolean> = {
-    visit: !!complaints.trim() || Object.values(vitals).some((v) => !!v.trim()) || !!examination.trim() || invResults.length > 0,
+    visit: !!complaints.trim() || Object.values(vitals).some((v) => !!v.trim()) || !!examination.trim() || !!diagnosis.trim() || invResults.length > 0,
     investigations: advisedTests.length > 0 || !!invAdvice.trim(),
     medicines: medicines.length > 0,
     followup: !!followup.trim() || !!followupNote.trim(),
